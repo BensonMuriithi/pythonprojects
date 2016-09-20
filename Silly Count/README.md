@@ -1,3 +1,5 @@
+Convert numbers to and from different bases.
+
 sillycount contains two functions:
 
 sillycount.getbase(number [,to_base, from_base]) -> converts the number 'number' from its

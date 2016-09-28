@@ -65,7 +65,7 @@ class DirOperations(object):
 	@staticmethod
 	def getcwd():
 		"""cwd / getcwd -> prints the current working directory."""
-		print os.getcwd()
+		return os.getcwd()
 	
 	cwd = getcwd
 	
@@ -108,7 +108,6 @@ class FileOperations(object):
 	"""Functions that mainly target files but occasionally also directories or even programs
 	
 	Functions:
-	
 	{}
 	"""
 	
@@ -183,7 +182,7 @@ class FileOperations(object):
 		if os.path.isfile(f):
 			os.remove(f)
 		elif os.path.isdir(f):
-			os.rmdir(f)
+			shutil.rmtree(f)
 		else:
 			raise FileLocationError("File {} cannot be found.\n{}".format(f,
 				"Ensure that you specified the path correctly."))

@@ -2,7 +2,7 @@ This package contains functions that are meant to provide the capabilities
 of Windows Powershell on the Python Shell.
 
 Methods are called in the python fashion but the main script system_interface.py supports
-command line arguments thus "python system_interface.py ls C:/Users" will work like
+command line arguments thus "python system_util.py ls C:/Users" will work like
 invoking ls on powershell with similar arguments (ls C:/Users)
 
 

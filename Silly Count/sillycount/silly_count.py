@@ -78,7 +78,7 @@ def getbase(number, base=2, frombase = 10):
 	
 	while structure[0] == 0:
 		#the result needs trailing zeros
-		structure.append(structure.popleft())
+		structure.rotate(-1)
 	
 	return ("-" if isNegative and number else "") + reduce(lambda a, b: a + b, map(lambda a: str(a), structure))
 

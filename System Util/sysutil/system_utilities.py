@@ -232,7 +232,7 @@ class FileOperations(object):
 				return
 		elif os.path.isdir(f):
 			os.rmdir(f)
-			mkdir(f)
+			DirOperations.mkdir(f)
 		else:
 			if 'y' in raw_input("Clear console? (y / n) : ").lower():
 				ConsoleOperations.cls()

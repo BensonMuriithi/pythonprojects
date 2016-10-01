@@ -1,8 +1,5 @@
-import os
-from sys import argv
-import shutil
-
-"""This module contains functions that are meant to provide the capabilities
+"""
+This module contains functions that are meant to provide the capabilities
 of Windows Powershell to the Python Shell.
 
 The functions have been organised into classes to maintain order and understandability 
@@ -11,6 +8,10 @@ as well as to make maintainance and development less cumbersome and confusing.
 FileLocationError is the only custom exception but apart from the exceptions
 raised by shutil, all exceptions in the module are IOError objects.
 """
+
+import os
+from sys import argv
+import shutil
 
 class FileLocationError(IOError): pass
 
@@ -75,16 +76,45 @@ class DirOperations(object):
 		If a specific path of a directory is given, the contents of that directory
 		are listed
 		"""
-		if not pth:
+		if pth == "":
 			pth = DirOperations.cwd()
-		directory = os.listdir(pth)
+		directory = sorted(os.listdir(pth), key = lambda name: name.lower())
 		
-		if directory[0].upper().endswith((".BIN", ".INI")):
-			directory.pop(0)
-		for f in sorted(directory):
-			print f
+		length = len(directory)
+		indexes = []
+		for i in xrange(length):
+			if directory[i].lower().endswith((".bin", ".ini", ".sys")):
+				indexes.append(i)
+		for i in indexes:
+			directory.pop(i)
+			length -= 1
+		
+		indexes = [i for i in xrange(length) if os.path.isdir(directory[i])]
+		
+		for i in indexes:
+			print directory[i]
+		
+		for i in xrange(length):
+			if i not in indexes:
+				print directory[i]
 		
 	dir = ls
+	
+	@staticmethod
+	def lsr(pth = ""):
+		"""Map all contents in a directory"""
+		if pth == "":
+			pth = DirOperations.cwd()
+		
+		for dirname, dirdirs, dirfiles in os.walk(pth):
+			print dirname
+			if dirdirs:
+				print "\n\t{}".format("\n\t".join(dirdirs))
+			if dirfiles:
+				print "\n\t{}".format("\n\t\t".join([f for f in dirfiles if not f.endswith((".ini", ".bin", ".sys"))]))
+		print
+	
+	dirr = lsr
 	
 	@staticmethod
 	def cd(pth = ""):
@@ -121,6 +151,12 @@ class FileOperations(object):
 		
 		os.startfile(f)
 	
+	@staticmethod
+	def stop(process):
+		"""Forcefully kill a running process"""
+		os.system("taskkill /f /t /im {}.exe".format(process))
+	
+	kill = stop_process = stop
 	@staticmethod
 	def __cp_mv(copy_or_move, *args):
 		location, destination = args

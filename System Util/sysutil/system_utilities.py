@@ -16,12 +16,7 @@ import shutil
 class FileLocationError(IOError): pass
 
 class ConsoleOperations(object):
-	"""Holds methods largely affecting the console
-	
-	Functions:
-	
-	{}
-	"""
+	"""Holds methods largely affecting the console."""
 	
 	__python_text = "Python 2.7.12 (v2.7.12:d33e0cf91556, Jun 27 2016, 15:24:40) [MSC v.1500 64 bit (AMD64)] on win32\n\
 	Type \"help\", \"copyright\", \"credits\" or \"license\" for more information."
@@ -56,12 +51,7 @@ class ConsoleOperations(object):
 
 
 class DirOperations(object):
-	"""Contains functions that are largely targeted at directories.
-	
-	Functions:
-	
-	{}
-	"""
+	"""Contains functions that are largely targeted at directories."""
 	
 	@staticmethod
 	def getcwd():
@@ -72,7 +62,9 @@ class DirOperations(object):
 	
 	@staticmethod
 	def ls(pth = ""):
-		"""ls / dir (path) -> lists the contents of the current working directory in only alphabetical order.
+		"""ls / dir (path) -> lists the contents of the current working directory 
+			starting with folders and then files each in alphabetical order.
+			
 		If a specific path of a directory is given, the contents of that directory
 		are listed
 		"""
@@ -106,19 +98,24 @@ class DirOperations(object):
 		if pth == "":
 			pth = DirOperations.cwd()
 		
+		notdotdot = pth != ".."
+		
 		for dirname, dirdirs, dirfiles in os.walk(pth):
-			print dirname
+			print dirname if notdotdot else dirname.replace("..", 
+					os.path.basename(os.path.abspath(pth)))
 			if dirdirs:
-				print "\n\t{}".format("\n\t".join(dirdirs))
+				print "\n\t{}\\".format("\\\n\t".join(dirdirs))
 			if dirfiles:
-				print "\n\t{}".format("\n\t\t".join([f for f in dirfiles if not f.endswith((".ini", ".bin", ".sys"))]))
+				print "\n\t{}".format("\n\t".join([f for f in dirfiles if not 
+						f.endswith((".ini", ".bin", ".sys"))]))
 		print
 	
 	dirr = lsr
 	
 	@staticmethod
 	def cd(pth = ""):
-		"""cd / chdir (path) -> If a path to a directory is specified, it moves the cwd to that directory.
+		"""cd / chdir (path) -> If a path to a directory is specified, it moves the 
+			cwd to that directory.
 		If no path is specified, it prints the current path."""
 		if os.path.isdir(pth):
 			os.chdir(pth)
@@ -135,11 +132,7 @@ class DirOperations(object):
 
 
 class FileOperations(object):
-	"""Functions that mainly target files but occasionally also directories or even programs
-	
-	Functions:
-	{}
-	"""
+	"""Functions that mainly target files but occasionally also directories or even programs"""
 	
 	@staticmethod
 	def start(f):
@@ -157,6 +150,7 @@ class FileOperations(object):
 		os.system("taskkill /f /t /im {}.exe".format(process))
 	
 	kill = stop_process = stop
+	
 	@staticmethod
 	def __cp_mv(copy_or_move, *args):
 		location, destination = args
@@ -247,23 +241,15 @@ class FileOperations(object):
 
 __functions = dict()
 for group in (ConsoleOperations, DirOperations, FileOperations):
-	class_vars = vars(group)
-	
-	#since all methods are staticmethods
-	methods = [i for i in class_vars.keys() if isinstance(class_vars[i], staticmethod) and i.find("__") < 0]
-	
-	collect_doc = ""
-	for k in methods:
-		__functions[k] = class_vars[k].__func__
-		collect_doc += (class_vars[k].__func__.__doc__ + "\n")
-	
-	group.__doc__.format(collect_doc)
+	for n, f in vars(group).items():
+		if isinstance(f, staticmethod) and n.find("__") < 0:
+			#get the function from the valid staticmethod
+			__functions[n] = f.__func__
 	
 if __name__ == "__main__":
-	
 	if len(argv) > 1:
 		if argv[1] in __functions:
 			__functions[argv[1]](*argv[2:])
 		else:
-			print "Function not supported by System_Interface."
+			print "Operation not supported by sysutil."
 

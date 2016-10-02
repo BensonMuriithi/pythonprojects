@@ -37,23 +37,22 @@ def getbase(number, base=2, frombase = 10):
 		->getvalue is a function in this module that get the base 10(default) value
 			of an Integer in as string
 	"""
-	
+	if isinstance(number, float):
+		raise FloatConvertError("The number to be converted must not be a float. {}".format(number))
+		
 	if not frombase == 10:
 		number = getvalue(number, frombase)
 	
-	if 1 >= base or base >= len(__alphanumerals) or not floor(base) == base:
+	if 1 >= base or base >= len(__alphanumerals):
 		raise InvalidBaseError("Invalid value: {} entered as base to convert to. \n{}".format(base,
 			"Assert that the base to convert to is a decimal integer."))
 	
 	if isinstance(number, str):
 		try:
-			number = atof(number)
+			number = getvalue(number)
 		except ValueError:
 			#The first check of whether the base is 10 would have already corrected the number
 			raise IncorrectBaseError("Incorrect base passed as base of number -> number: {} base: {}".format(number, frombase))
-	
-	if number > floor(number):
-		raise FloatConvertError("The number to be converted must not be a float. {}".format(number))
 	
 	isNegative = False
 	if number < 0:
@@ -92,6 +91,8 @@ def getvalue(number, base=10):
 	All Exceptions raised by this function inherit ValueError thus it can be used
 	to catch them.
 	"""
+	
+	#This function has been relegated in favour of strbase.strbase
 	if not base == int(base):
 		raise InvalidBaseError("Invalid value : {} entered as base of number. \n{}".format(base),
 			"Assert that the specified base of the number is an integer.")

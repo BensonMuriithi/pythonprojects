@@ -116,7 +116,7 @@ def wipe(f = ""):
 	"""
 	
 	if os.path.isfile(f):
-		with open(f, "wb") as mine:
+		with open(f, "wb"):
 			return
 	elif os.path.isdir(f):
 		shutil.rmtree(f)

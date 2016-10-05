@@ -22,7 +22,7 @@ def __cp_mv_del(copy_or_move, location, destination):
 	"""
 	Backbone function to copy, move or delete files.
 	
-	If widcards are used in the path for location, all files matching
+	If wildcards are used in the path for location, all files matching
 	the wildcard are acted upon.
 	"""
 	if destination and os.path.isfile(destination):
@@ -114,7 +114,7 @@ rm = delete
 def wipe(f = ""):
 	"""
 	wipe(filename) -> Wipes the contents of the file or directory specified.
-	Wildcards are not supported for this function.
+	wildcards are not supported for this function.
 	
 	If no path is specified, the console can be cleared.
 	"""

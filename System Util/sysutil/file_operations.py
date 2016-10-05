@@ -63,8 +63,8 @@ def __cp_mv_del(copy_or_move, location, destination):
 
 def copy(source, destination):
 	"""
-	copy(source, destination) / cp -> moves a file or files(use asterisk eg *.py 
-	as basename of path) from one location to another.
+	copy(source, destination) / cp -> copies a file or files(use wildcards) 
+	to another location.
 	
 	The target destination must be a directory.
 	"""
@@ -73,12 +73,8 @@ def copy(source, destination):
 cp = copy
 
 def move(source, destination):
-	"""
-	move(source, destination) / mv -> moves a file or files(use asterisk eg *.py 
-	as basename of path) from one location to another.
-	
-	The target destination must be a directory.
-	"""
+	moves a file or files(use wildcards) 
+	from one location to another.
 	
 	__cp_mv_del("Move", source, destination)
 

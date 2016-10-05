@@ -11,7 +11,7 @@ class InvalidPathError(OSError):
 
 class InterimError(Exception):
 	"""
-	This is an interim error always meant to be caught.
+	This is an interim error ad is always meant to be caught.
 	A custom class is created so as to not use built-in errors and catch them
 	as they could actually be raised especially after later modification.
 	"""
@@ -48,15 +48,10 @@ def __resolvehint(pth, hint):
 	"""
 	Working of __resolvehint:
 	
-	hint is checked to contain an asterisk. If no asterisk exists in hint, then
-	the hint which is the basename of pth+hint, is meant as is so the list containing
-	possible matches is returned with only hint
-	
-	If an asterisk is located in hint, then hint is indeed a generalization eg *.py or
-	prefix* or even *this_name*
-	In this case ^ __resolvefromdirlist will returned all names in the directory 
-	represented by pth depending on whether the hint is a suffix, prefix or contain
-	generalization. The resultant list is then returned by this function.
+	hint is checked to be a wildcard.If it is, __resolvefromdirlist is called 
+	with the hintpos parameter corresponding with the location of the
+	wildcard.
+	The resultant list is then returned by this function.
 	"""
 	asterisk_atstart = hint[0] == "*"
 	asterisk_atend = hint[-1] == "*"
@@ -148,7 +143,7 @@ def ls(pth = "", indent = ""):
 	ls / dir (path) -> prints the contents of the specified directory
 	beginning with folders and then files, each sorted alphabetically.
 	
-	If the path is ommitted, the default which is the current working directory
+	If the path is omitted, the default which is the current working directory
 	is used.
 	"""
 	if pth.find("*") != -1:
@@ -174,7 +169,7 @@ def lsr(pth = "", afterfirst = False, cuthint = ""):
 	Map the contents of a directory
 	
 	System files whose names match the tuples __system_names_start and __system_names_end
-	at the beginning or end are ommitted.
+	at the beginning or end are omitted.
 	
 	Wildcards are supported and if used, only files matching the wildcards are listed
 	"""

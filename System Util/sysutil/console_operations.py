@@ -9,7 +9,7 @@ import os
 __python_text = "Python 2.7.12 (v2.7.12:d33e0cf91556, Jun 27 2016, 15:24:40) \
 [MSC v.1500 64 bit (AMD64)] on win32\n\
 Type \"help\", \"copyright\", \"credits\" or \"license\" for more information."
-#I could not find a way to programmatically fetch this text directly from the installed python.
+#Could not find a way to programmatically fetch this text directly from the installed python.
 
 
 def cls():
@@ -77,3 +77,4 @@ def tasklist(process = ""):
 	print "".join(lines)
 
 getprocess = tasklist
+

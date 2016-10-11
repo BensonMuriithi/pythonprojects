@@ -6,3 +6,6 @@ Most methods have multiple names to handle the command name differences on power
 cmd and other shells. ie copy()  and cp() do the same thing.
 
 When new operations are discovered manageable in Python they'll be included asap.
+
+If any improvements performance or otherwise they can be pointed out.
+

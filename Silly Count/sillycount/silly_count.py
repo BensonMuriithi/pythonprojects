@@ -8,9 +8,9 @@ Exception classes:
 
 from math import log, ceil, floor
 from collections import deque
-from itertools import repeat
 from string import uppercase, digits, atof
 import re
+import itertools
 
 __alphanumerals = (digits + uppercase)
 
@@ -37,6 +37,9 @@ def getbase(number, base=2, frombase = 10):
 		->getvalue is a function in this module that get the base 10(default) value
 			of an Integer in as string
 	"""
+	
+	#This function has been relegated in favour of strbase.strbase
+	
 	if isinstance(number, float):
 		raise FloatConvertError("The number to be converted must not be a float. {}".format(number))
 		
@@ -63,7 +66,7 @@ def getbase(number, base=2, frombase = 10):
 	
 	ceiling = int(logarithm) + 1
 	
-	structure = deque(repeat(0, ceiling), maxlen = ceiling)
+	structure = deque(itertools.repeat(0, ceiling), maxlen = ceiling)
 	
 	while number:
 		if number >= (base ** int(logarithm)):
@@ -82,62 +85,42 @@ def getbase(number, base=2, frombase = 10):
 	return ("-" if isNegative and number else "") + reduce(lambda a, b: a + b, map(lambda a: str(a), structure))
 
 def getvalue(number, base=10):
-	"""getvalue(number [,base]) -> int
+	"""	int
 	Gets the value in base 10 of a number in the specified base
-		
-	Any number positive or negative number unless is a float which is not
-	equivalent to its floor is accepted.
+	Any number positive or negative number unless it's a float
 	
-	All Exceptions raised by this function inherit ValueError thus it can be used
-	to catch them.
+	The function is on average 10 times slower than Python's int function.
 	"""
 	
-	#This function has been relegated in favour of strbase.strbase
-	if not base == int(base):
-		raise InvalidBaseError("Invalid value : {} entered as base of number. \n{}".format(base),
-			"Assert that the specified base of the number is an integer.")
+	if not (isinstance(base, int) or isinstance(base, long)):
+		raise ValueError("Invalid value : {} entered as base of number.".format(base))
 	
-	if base >= len(__alphanumerals):
-		raise InvalidBaseError("The base: {} is too large for conversion.".format(base))
+	if not 2 <= base <= 36:
+		raise ValueError("Bases to get values from must be >=2 and <= 36.")
 	
-	isNegative = False
+	number = str(number)
+	if number.find('.') != -1:
+		raise ValueError("Cannot operate on floating point numbers.")
+	if number.startswith("-"):
+		return -getvalue(number, base)
 	
-	if isinstance(number, float):
-		if floor(number) < number:
-			raise ValueError("Invalid integer supply for conversion. Must not be float")
+	def get_ordinance_values():
+		zero_ordinance = ord("0")
+		a_ordinance = ord("a")
+		
+		for i in reversed(number.lower()):
+			ordinance = ord(i)
+			if ordinance - zero_ordinance < 10:
+				yield ordinance - zero_ordinance
+			else:
+				yield 10 + (ordinance - a_ordinance)
+	
+	result = 0
+	for v, p in itertools.izip(get_ordinance_values(), itertools.count()):
+		if v < base:
+			result += (v * pow(base, p))
 		else:
-			isNegative = number < 0
-			number = str(int(abs(number)))
-	elif isinstance(number, str):
-		if not number.find('.') == -1:
-			if re.search(r"[.][1-9]*"): raise ValueError("Invalid integer supply for conversion. Must not be float")
-			else: number = number.split('.')[0]
-		
-		if number.startswith(("+", "-")):
-			isNegative = number[0] == '-'
-			number = number[1:]
-	else:
-		isNegative = number < 0
-		number = str(abs(int(number))) #Accomodate shorter longs ha:)
+			raise ValueError("Number : {number} is too large for base {b}".format(number = number, b = base))
 	
-	number_list = None
-	
-	try:
-		number_list = [int(i) if base <= 10 else __alphanumerals.index(i.upper()) for i in number]
-		del number
-		if filter (lambda a: a > base, number_list):
-			raise ValueError
-	except ValueError:
-		raise ValueError("Invalid value : {} for base {}".format(number, base))
-	
-	#map function:
-		#xrange is reversed so the first digit appearing in the list is multiplied
-		#by the its occurence as we understand it ie
-			#if the digits in number_list were 45, 4 will be multiplied by
-			#the base raised by 1 instead of 0
-		
-	value = reduce(lambda a, b: a + b, 
-		map(lambda d, p: d * (base ** p), number_list, xrange(len(number_list) - 1, -1,-1))
-	)
-	return -value if isNegative else value
+	return result
 

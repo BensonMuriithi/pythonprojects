@@ -73,8 +73,10 @@ def copy(source, destination):
 cp = copy
 
 def move(source, destination):
+	"""
 	moves a file or files(use wildcards) 
 	from one location to another.
+	"""
 	
 	__cp_mv_del("Move", source, destination)
 
@@ -98,7 +100,9 @@ def new_item(name):
 
 def delete(f):
 	"""
-	delete(filename) / rem / rm -> deletes a file or directory from its location
+	delete(filename) / rem / rm -> deletes a file or directory from its location.
+	If a wildcard is used, all files and directories matching it, 
+	unless an error occurs will be deleted.
 	
 	'del' could not be used as a synonymn to prevent clash with python's 'del' keyword
 	"""

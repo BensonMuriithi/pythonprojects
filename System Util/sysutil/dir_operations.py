@@ -146,6 +146,10 @@ def ls(pth = "", indent = ""):
 	If the path is omitted, the default which is the current working directory
 	is used.
 	"""
+	
+	if not pth:
+		pth = os.getcwd()
+	
 	if pth.find("*") != -1:
 		pth = os.path.abspath(pth)
 		if os.path.exists(os.path.dirname(pth)):

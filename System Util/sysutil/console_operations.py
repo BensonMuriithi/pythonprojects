@@ -30,7 +30,10 @@ def start(f):
 	os.startfile(f)
 
 def stop(process):
-	"""Forcefully kill a running process"""
+	"""stopprocess(process) / kill / stop / taskkill -> 
+	Forcefully kill a running process and all itschild processes.
+	"""
+	
 	outputfile = tempfile.TemporaryFile()
 	
 	result = subprocess.call("taskkill /f /t /im".split() + ["{}.exe".format(process)],
@@ -39,23 +42,22 @@ def stop(process):
 	if result != 0:
 		print "Kill of {}.exe unsuccessful.".format(process)
 
-kill = stopprocess = stop
+kill = stopprocess = taskkill = stop
 
 def tasklist(process = ""):
 	"""
-	Get the list of running processes. To simulate ommitting child processes,
-	a process name will be printed only once.
+	getprocess(process = "") / tasklist -> Get the list of running processes. 
+	To simulate omitting child processes, a process name will be printed only once.
 	
 	If a specific task name is provided, the task(s) whose name match it are listed. 
 	"""
-	
-	f = tempfile.TemporaryFile(bufsize = 0)
 	
 	if process:
 		subprocess.call("tasklist /fi \"imagename eq {}.exe\"".format(process))
 		print
 		return
-		
+	
+	f = tempfile.TemporaryFile(bufsize = 0)
 	subprocess.call("tasklist", bufsize = 0, stdout = f, stderr = f)
 	
 	f.seek(0)

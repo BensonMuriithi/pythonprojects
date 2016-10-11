@@ -172,6 +172,7 @@ def __ls(pth, directory, indent = ""):
 				
 				yield i
 	
+	
 	for to_rem, control in zip(get_sytemfile_indexes(), itertools.count()):
 		directory.pop(to_rem - control)
 	

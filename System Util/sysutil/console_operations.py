@@ -5,7 +5,6 @@ Functions that target the shell.
 import tempfile
 import subprocess
 import os
-import sys
 import itertools
 
 
@@ -14,6 +13,7 @@ def cls():
 	Wipes all text on the shell but input history and namespace variables
 	are not affected.
 	"""
+	import sys
 	
 	os.system("cls")	
 	print
@@ -148,5 +148,4 @@ def more(f):
 				raw_input("-- More --")
 			else:
 				break
-	
-	
+

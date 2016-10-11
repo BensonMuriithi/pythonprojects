@@ -149,3 +149,29 @@ def more(f):
 			else:
 				break
 
+def shutdown():
+	"""
+	Shuts down the local computer.
+	"""
+	
+	if os.name == "nt":
+		subprocess.call("shutdown /s")
+	else:
+		print "Until this functionality is added to the package for other platforms by\
+			Mr Muriithi \nkindly add it yourself if you can."
+
+def restart_computer():
+	"""
+	Completely shuts down the computer then restarts it.
+	
+	synonymns: restart_computer, restart
+	"""
+	
+	if os.name == "nt":
+		subprocess.call("shutdown /r")
+	else:
+		print "Until this functionality is added to the package for other platforms by\
+			Mr Muriithi \nkindly add it yourself if you can."
+
+restart = restart_computer
+

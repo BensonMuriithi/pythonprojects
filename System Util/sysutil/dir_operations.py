@@ -159,7 +159,7 @@ def __ls(pth, directory, indent = ""):
 	if not directory:
 		return
 	
-	def get_sytemfile_indexes():
+	def get_systemfile_indexes():
 		"""
 		A generator of the indexes of directory with names corresponding
 		to those of system files.
@@ -173,7 +173,7 @@ def __ls(pth, directory, indent = ""):
 				yield i
 	
 	
-	for to_rem, control in zip(get_sytemfile_indexes(), itertools.count()):
+	for to_rem, control in zip(get_systemfile_indexes(), itertools.count()):
 		directory.pop(to_rem - control)
 	
 	files = []

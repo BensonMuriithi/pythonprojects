@@ -9,7 +9,6 @@ Exception classes:
 from math import log, ceil, floor
 from collections import deque
 from string import uppercase, digits, atof
-import re
 import itertools
 
 __alphanumerals = (digits + uppercase)

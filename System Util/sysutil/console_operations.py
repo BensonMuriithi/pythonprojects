@@ -6,7 +6,7 @@ import tempfile
 import subprocess
 import os
 import itertools
-
+import chardet
 
 def cls():
 	"""
@@ -149,29 +149,85 @@ def more(f):
 			else:
 				break
 
+__posix_unavailability = "Until this functionality is added to the package for other platforms \
+			by Ben \nkindly add it yourself if you can."
+
 def shutdown():
 	"""
 	Shuts down the local computer.
+	
+	
+	synonymns:  shutdown, stopcomputer
 	"""
 	
 	if os.name == "nt":
-		subprocess.call("shutdown /s")
+		subprocess.call("shutdown /p")
 	else:
-		print "Until this functionality is added to the package for other platforms by\
-			Mr Muriithi \nkindly add it yourself if you can."
+		print __posix_unavailability
 
-def restart_computer():
+
+stopcomputer = shutdown
+
+def restartcomputer():
 	"""
 	Completely shuts down the computer then restarts it.
 	
-	synonymns: restart_computer, restart
+	synonymns: restartcomputer, restart
 	"""
 	
 	if os.name == "nt":
-		subprocess.call("shutdown /r")
+		subprocess.call("shutdown /r -t 01")
 	else:
-		print "Until this functionality is added to the package for other platforms by\
-			Mr Muriithi \nkindly add it yourself if you can."
+		print __posix_unavailability
 
-restart = restart_computer
+restart = restartcomputer
+
+def getdrives():
+	"""
+	Prints the info of drives connnected to the computer.
+	The function currently only works on windows and utilises the wmic command
+	
+	
+	synonymns: getdrives, psdrive
+	"""
+	if os.name == "nt":
+		namefile = tempfile.TemporaryFile(bufsize = 0)
+		volumenamefile = tempfile.TemporaryFile(bufsize = 0)
+		freespacefile = tempfile.TemporaryFile(bufsize = 0)
+		
+		#Store the result of each detail for later formatting.
+		subprocess.call("wmic logicaldisk get name", stdout = namefile)
+		subprocess.call("wmic logicaldisk get volumename", stdout = volumenamefile)
+		subprocess.call("wmic logicaldisk get freespace", stdout = freespacefile)
+		
+		result_files = (namefile, volumenamefile, freespacefile)#no performance hit
+		for f in result_files:
+			f.seek(0)
+		
+		def format_cmdoutput(s):#Output of wmic is encoded in utf-16_le
+			encoding = chardet.detect(s)#pypi package to detect encoding
+			return s.decode(encoding["encoding"], 'ignore')[1:].rstrip()
+		
+		format_template = "\t{0}\t\t\t   {1}\t\t  {2}"
+		#result of trial and error for best fit .join() isn't flexible enough
+		
+		print format_template.format(*(format_cmdoutput(f.readline()) for f in result_files))
+		
+		print "  {0}\t\t{1}\t\t{2}".format(*itertools.repeat("-"*15, len(result_files)))
+		
+		for i in itertools.izip(namefile, volumenamefile, freespacefile):
+			name, vol_name, space = (x.replace("\x00", "").rstrip() for x in i)
+			
+			print format_template.format(name or "Unknown",#Some drives are detected
+				#but aren't registered so requests for their name are blank
+				
+				vol_name or "Unavailable",#A drive eg dvd-rom are registered but 
+				#are inactive thus no volume name
+				
+				space and str(round((float(space) / 10 ** 9), 1)) + " GB"\
+					or "Unavailable")
+	else:
+		print __posix_unavailability
+
+psdrive = getdrives
 

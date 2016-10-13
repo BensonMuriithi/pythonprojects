@@ -7,7 +7,7 @@ import itertools
 
 class InvalidPathError(OSError):
 	"""
-	The path specified cannot be resolved.
+	Raised when the path specified cannot be resolved.
 	"""
 
 class InterimError(Exception):

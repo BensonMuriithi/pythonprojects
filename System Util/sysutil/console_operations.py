@@ -24,6 +24,31 @@ def cls():
 	print "Type \"help\", \"copyright\", \"credits\" or \"license\" for more information."
 
 
+def clear(variables, *omit):
+	"""
+	Clears the variables in the dict provided for an object.
+	If 'variables' is an object other than dict, and not built-in, it's __dict__
+	member is used.
+	"""
+	
+	def call_cls():
+		if 'y' in raw_input("Clear console? (y / n) >> ").lower():
+			cls()
+	
+	if not isinstance(variables, dict):
+		if hasattr(variables, 'dict'):
+			variables = variables.__dict__
+		else:
+			call_cls()
+			return
+	
+	for x in variables.keys():
+		if not x.startswith('__') and x not in omit:
+			del variables[x]
+	
+	call_cls()
+
+
 def start(f):
 	"""
 	Starts a specified file using the default set for that type of file
@@ -52,7 +77,7 @@ def stop(process):
 	
 	outputfile = tempfile.TemporaryFile()
 	
-	result = subprocess.call("taskkill /f /t /im".split() + ["{}.exe".format(process)],
+	result = subprocess.call("taskkill /f /t /im {}.exe".format(process),
 		stdout = outputfile, stderr = outputfile)
 	
 	if result != 0:
@@ -176,7 +201,7 @@ def restartcomputer():
 	"""
 	
 	if os.name == "nt":
-		subprocess.call("shutdown /r -t 01")
+		subprocess.call("shutdown /r -t 00")
 	else:
 		print __posix_unavailability
 
@@ -230,4 +255,17 @@ def getdrives():
 		print __posix_unavailability
 
 psdrive = getdrives
+
+def eject(drive):
+	"""
+	Eject the cd tray whose path is the one specified.
+	
+	The function currently only works on Windows.
+	"""
+	
+	if os.name == "nt":
+		import executables
+		subprocess.call([executables.eject, drive])
+	else:
+		print __posix_unavailability
 

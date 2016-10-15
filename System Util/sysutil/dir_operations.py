@@ -17,6 +17,7 @@ class InterimError(Exception):
 	as they could actually be raised especially after later modification.
 	"""
 
+
 __system_names_start = ("bootmgr", "bootnxt", "system", "skypee")
 __system_names_end = (".bin", ".ini", ".sys")
 #some names reserved for system files.
@@ -89,7 +90,7 @@ def __resolve_cdpath(pth):
 			if "*" in piece:
 				resolved_iter = __resolvehint(resolvedpth, piece)
 				try:
-					resolvedpth += next(resolved_iter) +"/"
+					resolvedpth += next(resolved_iter) +"\\"
 				except StopIteration: raise InterimError
 				
 				try:
@@ -97,9 +98,22 @@ def __resolve_cdpath(pth):
 					raise InterimError#path resolution yielded multiple possibilities.
 				except StopIteration: pass
 			else:
-				resolvedpth += piece + "/"
+				resolvedpth += piece + "\\"
 				if not os.path.exists(resolvedpth):
-					raise InterimError
+					if len(resolvedpth) <= 3 and os.name == 'nt':
+						try:
+							os.chdir(resolvedpth)
+						except WindowsError, e:
+							if e.args[0] == 21:#The error number 21 for WindowsError is raised
+							#when the drive exists but isn't ready.
+								
+								from console_operations import eject
+								eject(resolvedpth)
+								
+								return None
+							else: raise InterimError
+					else:
+						raise InterimError
 		
 		if not os.path.isdir(resolvedpth):
 			raise InterimError
@@ -114,8 +128,7 @@ def cwd():
 	Prints the current working directory.
 	"""
 	
-	print os.getcwd().replace("\\", "/")
-
+	print os.getcwd()
 
 def cd(pth = ""):
 	"""
@@ -129,7 +142,10 @@ def cd(pth = ""):
 	if pth == "..":
 		os.chdir("..")
 	elif pth != "":
-		os.chdir(__resolve_cdpath(pth))
+		resolvedpth = __resolve_cdpath(pth)
+		if resolvedpth:
+			os.chdir(resolvedpth)
+		else: return
 	
 	cwd()
 
@@ -215,14 +231,14 @@ def ls(pth = "", indent = ""):
 		if os.path.exists(os.path.dirname(pth)):
 			contents = __resolvehint(os.path.dirname(pth), os.path.basename(os.path.abspath(pth)))
 			
-			print "\n" + os.path.dirname(pth).replace("\\", "/")
+			print "\n" + os.path.dirname(pth)
 			
 			__ls(os.path.dirname(pth), contents, indent)
 		else:
 			raise InvalidPathError("Asterisk (*) should only be in base of path for this operation.")
 	else:
 		if os.path.exists(pth):
-			print "\n" + pth.replace("\\", "/") + "\n"
+			print "\n" + pth + "\n"
 			__ls(pth, os.listdir(pth or os.getcwd()), indent)
 		else:
 			raise InvalidPathError("The path {} cannot be resolved".format(pth))

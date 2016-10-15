@@ -27,6 +27,14 @@ cls()
 	Wipes all text on the shell but input history and namespace variables
 	are not affected.
 
+clear(variables, *omit)
+	Clears the variables in the dict provided for an object.
+	If 'variables' is an object other than dict, and not built-in, it's __dict__
+	member is used.
+	
+	All members of variables apart from those starting with '__' or included
+	in omit are deleted.
+
 cwd()
 	Prints the current working directory.
 
@@ -64,6 +72,11 @@ delete(filename, force = "")
 	
 	
 	synonymns: rm, delete, remove
+
+eject(drive)
+	Eject the cd tray whose path is the one specified.
+	
+	The function currently only works on Windows.
 
 getdrives()
 	Prints the info of drives connnected to the computer.
@@ -184,7 +197,7 @@ stop(process)
 
 tasklist(process = "")
 	Get the list of running processes. 
-	To simulate omitting child processes, a process name will be printed only once.
+	To simulate omitting child processes, a process name ewill be printed only once.
 	
 	arguments:
 	

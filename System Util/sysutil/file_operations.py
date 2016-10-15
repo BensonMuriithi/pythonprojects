@@ -116,7 +116,8 @@ def delete(filename, force = ""):
 	"""
 	
 	if os.name == "nt" and force != "f":
-		subprocess.call(["executables\\recycle", filename])
+		import executables
+		subprocess.call([executables.recycle, filename])
 	else:
 		for f in __getfiles(filename):
 			try:

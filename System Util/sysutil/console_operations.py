@@ -31,22 +31,20 @@ def clear(variables, *omit):
 	member is used.
 	"""
 	
-	def call_cls():
-		if 'y' in raw_input("Clear console? (y / n) >> ").lower():
-			cls()
-	
 	if not isinstance(variables, dict):
-		if hasattr(variables, 'dict'):
+		try:
 			variables = variables.__dict__
-		else:
-			call_cls()
-			return
+		except AttributeError:
+			raise TypeException("Object of type {} does not have members or data\
+				to clear.".format(variables.__class__))
 	
 	for x in variables.keys():
 		if not x.startswith('__') and x not in omit:
 			del variables[x]
 	
-	call_cls()
+	if 'y' in raw_input("Clear console? (y / n) >> ").lower():
+		cls()
+
 
 
 def start(f):

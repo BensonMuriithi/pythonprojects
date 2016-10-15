@@ -242,6 +242,9 @@ def ls(pth = "", indent = ""):
 			__ls(pth, os.listdir(pth or os.getcwd()), indent)
 		else:
 			raise InvalidPathError("The path {} cannot be resolved".format(pth))
+	
+	if not indent:#Escape this during calls by lsr
+		print
 
 dir = ls
 
@@ -294,7 +297,9 @@ def lsr(pth = "", afterfirst = False, hint = ""):
 			
 			lsr(fullname, afterfirst = True, hint = hint)
 	
-	
+	#terminate in new-line
+	print
+
 dir_r = lsr
 
 def mkdir(name):

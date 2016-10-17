@@ -139,12 +139,18 @@ def cat(f):
 	
 	synonymns: cat, stream
 	"""
-	if not os.path.isfile(f):
-		print "Can only stream files."
+	
+	if isinstance(f, file):
+		if f.closed:
+			f = open(f.name)
+	elif os.path.isfile(f):
+		f = open(f)
+	else:
+		raise IOError("Can only stream files.")
 		return
 	
-	with open(f) as xjr:
-		print "".join(xjr)
+	with f:
+		print "".join(f)
 
 stream = cat
 
@@ -156,24 +162,57 @@ def more(f):
 	
 	f: The file to read.   (Required)
 	"""
-	if not os.path.isfile(f):
-		print "Can only read contents of files."
-		return
+	if isinstance(f, file):
+		if f.closed:
+			f = open(f.name)
+	elif os.path.isfile(f):
+		f = open(f)
+	else:
+		raise IOError("Can only read contents of files.")
 	
-	step = 10
-	with open(f) as xfr:
-		xfr.seek(0, 2)
-		file_length = xfr.tell()
+	import msvcrt#I believe Windows only
+	
+	def get_morecharater():
+		while not msvcrt.kbhit():
+			pass
+		
+		return msvcrt.getch()
+	
+	with f as xfr:
+		step = 25
+		
+		lines = 0
+		for l in xfr:
+			lines += 1
 		xfr.seek(0)
-		for p in itertools.count(0, step):
-			print "".join(itertools.islice(xfr, 0, step))
-			if file_length - p > step:
-				raw_input("-- More --")
+		
+		while 1:
+			print "\r" + "".join(itertools.islice(xfr, 0, step))
+			#despite this, if the first line in an iteration has a newline as
+			#the first character, (or is empty), the string __ More __ won't 
+			#be escaped and will be included in the output
+			#let m be __ More __
+			#This holds true for first lines after m that are shorter
+			#than m. The first string will be printed and the remainder of m
+			#will be concatenated to the first string.
+			
+			lines -= step
+			if lines > 0:
+				if lines <= 2:
+					#Escape the possibility commented above
+					continue
+				print "-- More --",
+				if get_morecharater() not in (' ', '\r'):
+					to_step = 2
+				else:
+					to_step = 25
 			else:
 				break
+			step = to_step
 
-__posix_unavailability = "Until this functionality is added to the package for other platforms \
-			by Ben \nkindly add it yourself if you can."
+
+__posix_unavailability = "Until this functionality is added to the package for \
+			other platforms by Ben \nkindly add it yourself if you can."
 
 def shutdown():
 	"""

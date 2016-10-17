@@ -174,7 +174,8 @@ def more(f):
 	else:
 		raise IOError("Can only read contents of files.")
 	
-	import msvcrt
+	import msvcrt#reason for Windows only. Posix equivalent of current
+	#get_morecharater will be included
 	
 	def get_morecharater():
 		while not msvcrt.kbhit():
@@ -197,8 +198,8 @@ def more(f):
 			#be escaped and will be included in the output
 			#let m be __ More __
 			#This holds true for first lines after m that are shorter
-			#than m. The first string will be printed and the remainder of m
-			#will be concatenated to the first string.
+			#than m. The first string will be printed and the remainder length
+			#of m will be concatenated to the first string.
 			
 			lines -= step
 			if lines > 0:

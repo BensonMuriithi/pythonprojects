@@ -4,6 +4,7 @@ Functions that are mainly targeted at working directories.
 
 import os
 import itertools
+import shared_content
 
 class InvalidPathError(OSError):
 	"""
@@ -73,6 +74,11 @@ def __resolvehint(pth, hint):
 	else:#asterisk at both start and end of hint
 		return __resolvefromdirlist(pth, hint[1:-1], CONTAINHINT)
 
+
+#One can disable the try and handle of WindowsError that
+#ejects the cd tray for this function to be cross-platform
+
+@shared_content.Windowsonly
 def __resolve_cdpath(pth):
 	"""
 	Resolves a path only for purposes of changing directory.
@@ -109,7 +115,6 @@ def __resolve_cdpath(pth):
 								
 								from console_operations import eject
 								eject(resolvedpth)
-								
 								return None
 							else: raise InterimError
 					else:
@@ -150,6 +155,51 @@ def cd(pth = ""):
 	cwd()
 
 chdir = cd
+
+class PushPopD(object):
+	"""
+	Class for creating an object that will hold the directories involved in
+	the calls of pushd and popd.
+	
+	popd switches the current working directory between the working directory when
+	pushd is called and the directory specified to pushd.
+	"""
+	def __init__(self, currentpath, pushpath):
+		
+		self.paths = itertools.cycle((currentpath, pushpath))
+		next(self.paths)#position at the path to push to.
+	
+	def popd(self):
+		os.chdir(next(self.paths))
+		cwd()
+
+
+__pushpopobj = None
+def pushd(pth):
+	"""
+	Changes the current working directory to one provided and saves
+	the incumbent so it can be returned to using popd.
+	
+	A global variable is preferred so it can be shared by both pushd and popd.
+	"""
+	global __pushpopobj
+	_pth = __resolve_cdpath(pth)
+	if _pth:
+		__pushpopobj = PushPopD(os.getcwd(), _pth)
+		__pushpopobj.popd()
+
+def popd():
+	"""
+	Switches the current working directory between that before pushd
+	was called and the working directory after pushd was called.
+	
+	Nothing happens if pushd hasn't been called.
+	"""
+	if __pushpopobj:
+		__pushpopobj.popd()
+	else:
+		print "Popd unavailable."
+
 
 def __ls(pth, directory, indent = ""):
 	"""
@@ -308,45 +358,4 @@ def mkdir(name):
 	"""
 	os.mkdir(name)
 	print "Directory {} created.".format(os.path.abspath(name))
-	
-class PushPopD(object):
-	"""
-	Class for creating an object that will hold the directories involved in
-	the calls of pushd and popd.
-	
-	popd switches the current working directory between the working directory when
-	pushd is called and the directory specified to pushd.
-	"""
-	def __init__(self, currentpath, pushpath):
-		
-		self.paths = itertools.cycle((currentpath, pushpath))
-		next(self.paths)#position at the path to push to.
-	
-	def popd(self):
-		os.chdir(next(self.paths))
-		cwd()
-
-__pushpopobj = None
-def pushd(pth):
-	"""
-	Changes the current working directory to one provided and saves
-	the incumbent so it can be returned to using popd.
-	
-	A global variable is preferred so it can be shared by both pushd and popd.
-	"""
-	global __pushpopobj
-	__pushpopobj = PushPopD(os.getcwd(), __resolve_cdpath(pth))
-	__pushpopobj.popd()
-
-def popd():
-	"""
-	Switches the current working directory between that before pushd
-	was called and the working directory after pushd was called.
-	
-	Nothing happens if pushd hasn't been called.
-	"""
-	if __pushpopobj:
-		__pushpopobj.popd()
-	else:
-		print "Popd unavailable."
 

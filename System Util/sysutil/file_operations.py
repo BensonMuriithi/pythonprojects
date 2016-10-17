@@ -5,6 +5,7 @@ Functions that mainly target files but occasionally also directories or even pro
 import os
 import shutil
 import subprocess
+import shared_content
 
 class PathIsFileError(IOError):
 	"""
@@ -93,6 +94,7 @@ def move(source, destination):
 	
 mv = move
 
+@shared_content.Windowsonly
 def delete(filename, force = ""):
 	"""
 	Deletes a items from their location.
@@ -115,9 +117,8 @@ def delete(filename, force = ""):
 	synonymns: rm, delete, remove
 	"""
 	
-	if os.name == "nt" and force != "f":
-		import executables
-		subprocess.call([executables.recycle, filename])
+	if force != "f":
+		subprocess.call([shared_content.recycle, filename])
 	else:
 		for f in __getfiles(filename):
 			try:

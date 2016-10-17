@@ -7,6 +7,7 @@ import subprocess
 import os
 import itertools
 import chardet
+import shared_content
 
 def cls():
 	"""
@@ -61,6 +62,7 @@ def start(f):
 	
 	os.startfile(f)
 
+@shared_content.Windowsonly
 def stop(process):
 	""" 
 	Forcefully kill a process and all its child processes.
@@ -83,6 +85,7 @@ def stop(process):
 
 kill = stopprocess = taskkill = stop
 
+@shared_content.Windowsonly
 def tasklist(process = ""):
 	"""
 	Get the list of running processes. 
@@ -154,6 +157,7 @@ def cat(f):
 
 stream = cat
 
+@shared_content.Windowsonly
 def more(f):
 	"""
 	Print the contents of a file 10 lines at a time.
@@ -170,7 +174,7 @@ def more(f):
 	else:
 		raise IOError("Can only read contents of files.")
 	
-	import msvcrt#I believe Windows only
+	import msvcrt
 	
 	def get_morecharater():
 		while not msvcrt.kbhit():
@@ -211,9 +215,7 @@ def more(f):
 			step = to_step
 
 
-__posix_unavailability = "Until this functionality is added to the package for \
-			other platforms by Ben \nkindly add it yourself if you can."
-
+@shared_content.Windowsonly
 def shutdown():
 	"""
 	Shuts down the local computer.
@@ -222,28 +224,23 @@ def shutdown():
 	synonymns:  shutdown, stopcomputer
 	"""
 	
-	if os.name == "nt":
-		subprocess.call("shutdown /p")
-	else:
-		print __posix_unavailability
-
+	subprocess.call("shutdown /p")
 
 stopcomputer = shutdown
 
+@shared_content.Windowsonly
 def restartcomputer():
 	"""
 	Completely shuts down the computer then restarts it.
 	
 	synonymns: restartcomputer, restart
 	"""
-	
-	if os.name == "nt":
-		subprocess.call("shutdown /r -t 00")
-	else:
-		print __posix_unavailability
+	subprocess.call("shutdown /r -t 00")
+
 
 restart = restartcomputer
 
+@shared_content.Windowsonly
 def getdrives():
 	"""
 	Prints the info of drives connnected to the computer.
@@ -252,47 +249,47 @@ def getdrives():
 	
 	synonymns: getdrives, psdrive
 	"""
-	if os.name == "nt":
-		namefile = tempfile.TemporaryFile(bufsize = 0)
-		volumenamefile = tempfile.TemporaryFile(bufsize = 0)
-		freespacefile = tempfile.TemporaryFile(bufsize = 0)
+	
+	namefile = tempfile.TemporaryFile(bufsize = 0)
+	volumenamefile = tempfile.TemporaryFile(bufsize = 0)
+	freespacefile = tempfile.TemporaryFile(bufsize = 0)
+	
+	#Store the result of each detail for later formatting.
+	subprocess.call("wmic logicaldisk get name", stdout = namefile)
+	subprocess.call("wmic logicaldisk get volumename", stdout = volumenamefile)
+	subprocess.call("wmic logicaldisk get freespace", stdout = freespacefile)
+	
+	result_files = (namefile, volumenamefile, freespacefile)#no performance hit
+	for f in result_files:
+		f.seek(0)
+	
+	def format_cmdoutput(s):#Output of wmic is encoded in utf-16_le
+		encoding = chardet.detect(s)#pypi package to detect encoding
+		return s.decode(encoding["encoding"], 'ignore')[1:].rstrip()
+	
+	format_template = "\t{0}\t\t\t   {1}\t\t  {2}"
+	#result of trial and error for best fit .join() isn't flexible enough
+	
+	print format_template.format(*(format_cmdoutput(f.readline()) for f in result_files))
+	
+	print "  {0}\t\t{1}\t\t{2}".format(*itertools.repeat("-"*15, len(result_files)))
+	
+	for i in itertools.izip(namefile, volumenamefile, freespacefile):
+		name, vol_name, space = (x.replace("\x00", "").rstrip() for x in i)
 		
-		#Store the result of each detail for later formatting.
-		subprocess.call("wmic logicaldisk get name", stdout = namefile)
-		subprocess.call("wmic logicaldisk get volumename", stdout = volumenamefile)
-		subprocess.call("wmic logicaldisk get freespace", stdout = freespacefile)
-		
-		result_files = (namefile, volumenamefile, freespacefile)#no performance hit
-		for f in result_files:
-			f.seek(0)
-		
-		def format_cmdoutput(s):#Output of wmic is encoded in utf-16_le
-			encoding = chardet.detect(s)#pypi package to detect encoding
-			return s.decode(encoding["encoding"], 'ignore')[1:].rstrip()
-		
-		format_template = "\t{0}\t\t\t   {1}\t\t  {2}"
-		#result of trial and error for best fit .join() isn't flexible enough
-		
-		print format_template.format(*(format_cmdoutput(f.readline()) for f in result_files))
-		
-		print "  {0}\t\t{1}\t\t{2}".format(*itertools.repeat("-"*15, len(result_files)))
-		
-		for i in itertools.izip(namefile, volumenamefile, freespacefile):
-			name, vol_name, space = (x.replace("\x00", "").rstrip() for x in i)
+		print format_template.format(name or "Unknown",#Some drives are detected
+			#but aren't registered so requests for their name are blank
 			
-			print format_template.format(name or "Unknown",#Some drives are detected
-				#but aren't registered so requests for their name are blank
-				
-				vol_name or "Unavailable",#A drive eg dvd-rom are registered but 
-				#are inactive thus no volume name
-				
-				space and str(round((float(space) / 10 ** 9), 1)) + " GB"\
-					or "Unavailable")
-	else:
-		print __posix_unavailability
+			vol_name or "Unavailable",#A drive eg dvd-rom are registered but 
+			#are inactive thus no volume name
+			
+			space and str(round((float(space) / 10 ** 9), 1)) + " GB"\
+				or "Unavailable")
+
 
 psdrive = getdrives
 
+@shared_content.Windowsonly
 def eject(drive):
 	"""
 	Eject the cd tray whose path is the one specified.
@@ -300,9 +297,5 @@ def eject(drive):
 	The function currently only works on Windows.
 	"""
 	
-	if os.name == "nt":
-		import executables
-		subprocess.call([executables.eject, drive])
-	else:
-		print __posix_unavailability
+	subprocess.call([shared_content.eject, drive])
 

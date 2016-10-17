@@ -134,7 +134,7 @@ def cat(f):
 	
 	arguments:
 	
-	f: Name of file to read.  (Required)
+	f: File or name of file to read.  (Required)
 	
 	
 	synonymns: cat, stream
@@ -160,7 +160,7 @@ def more(f):
 	
 	arguments:
 	
-	f: The file to read.   (Required)
+	f: File or name of file to read.   (Required)
 	"""
 	if isinstance(f, file):
 		if f.closed:

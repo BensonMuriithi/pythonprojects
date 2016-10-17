@@ -14,13 +14,13 @@ def cls():
 	Wipes all text on the shell but input history and namespace variables
 	are not affected.
 	"""
-	import sys
+	from sys import version, platform
 	
 	os.system("cls")	
 	print
 	
-	print "Python {version} on {sys_platform}".format(
-			version = sys.version, sys_platform = sys.platform,
+	print "Python {pyversion} on {pyplatf}".format(
+			pyversion = version, pyplatf = platform,
 		)
 	print "Type \"help\", \"copyright\", \"credits\" or \"license\" for more information."
 

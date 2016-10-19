@@ -76,8 +76,7 @@ def __resolvehint(pth, hint):
 
 
 #One can disable the try and handle of WindowsError that
-#ejects the cd tray for this function to be cross-platform
-
+#ejects the cd tray for the function to be cross-platform
 @shared_content.Windowsonly
 def __resolve_cdpath(pth):
 	"""
@@ -135,6 +134,7 @@ def cwd():
 	
 	print os.getcwd()
 
+@shared_content.assert_argument_type(str)
 def cd(pth = ""):
 	"""
 	If a path to a directory is specified, it moves the cwd to that directory.
@@ -175,6 +175,8 @@ class PushPopD(object):
 
 
 __pushpopobj = None
+
+@shared_content.assert_argument_type(str)
 def pushd(pth):
 	"""
 	Changes the current working directory to one provided and saves
@@ -200,7 +202,10 @@ def popd():
 	else:
 		print "Popd unavailable."
 
-
+#no need to check argument type of internal funtions.
+#The programmer is the only one handles them and might
+#change them to work with different types of data at another time.
+#Also, I don't think the overhead is worth it.
 def __ls(pth, directory, indent = ""):
 	"""
 	Print the contents of a directory.
@@ -253,7 +258,8 @@ def __ls(pth, directory, indent = ""):
 	
 	if files:
 		print indent + ("\n" + indent).join(files)
-	
+
+@shared_content.assert_argument_type(str)
 def ls(pth = "", indent = ""):
 	"""
 	Prints the contents of the specified directory
@@ -298,6 +304,7 @@ def ls(pth = "", indent = ""):
 
 dir = ls
 
+@shared_content.assert_argument_type(str, afterfirst = (bool, int))
 def lsr(pth = "", afterfirst = False, hint = ""):
 	"""
 	Map the contents of a directory. If no path is provided, the current working
@@ -352,6 +359,7 @@ def lsr(pth = "", afterfirst = False, hint = ""):
 
 dir_r = lsr
 
+@shared_content.assert_argument_type(str)
 def mkdir(name):
 	"""
 	Creates a new directory of the specified path.

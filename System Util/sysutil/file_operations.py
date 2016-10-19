@@ -45,8 +45,9 @@ def __getfiles(location, destination = ""):
 		if not os.path.exists(location):
 			raise FileLocationError("The file {} does not exist".format(location))
 		yield location
-	
 
+
+@shared_content.assert_argument_type(str)
 def copy(source, destination):
 	"""
 	Copies specified item(s) to another location.
@@ -70,6 +71,7 @@ def copy(source, destination):
 
 cp = copy
 
+@shared_content.assert_argument_type(str)
 def move(source, destination):
 	"""
 	Moves item(s) from one location to another.
@@ -95,6 +97,7 @@ def move(source, destination):
 mv = move
 
 @shared_content.Windowsonly
+@shared_content.assert_argument_type(str)
 def delete(filename, force = ""):
 	"""
 	Deletes a items from their location.
@@ -131,6 +134,7 @@ def delete(filename, force = ""):
 	
 rm = remove = delete
 
+@shared_content.assert_argument_type(str)
 def rename(old, new):
 	"""
 	Renames a file.
@@ -142,6 +146,7 @@ def rename(old, new):
 
 rni = rename
 
+@shared_content.assert_argument_type(str)
 def new_item(name):
 	"""
 	Create a new file with specified name.
@@ -160,6 +165,7 @@ def new_item(name):
 
 newitem = new_item #escape simple typing mistake or name confusion
 
+@shared_content.assert_argument_type(str)
 def wipe(f = ""):
 	"""
 	Wipes the contents of the file or directory specified.

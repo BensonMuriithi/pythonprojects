@@ -36,8 +36,9 @@ def clear(variables, *omit):
 		try:
 			variables = variables.__dict__
 		except AttributeError:
-			raise TypeException("Object of type {} does not have members or data\
-				to clear.".format(variables.__class__))
+			raise TypeException(
+			"Object of type {} does not have members or data to clear.".format(
+					variables.__class__))
 	
 	for x in variables.keys():
 		if not x.startswith('__') and x not in omit:
@@ -47,7 +48,7 @@ def clear(variables, *omit):
 		cls()
 
 
-
+@shared_content.assert_argument_type(str)
 def start(f):
 	"""
 	Starts a specified file using the default set for that type of file
@@ -63,6 +64,7 @@ def start(f):
 	os.startfile(f)
 
 @shared_content.Windowsonly
+@shared_content.assert_argument_type(str)
 def stop(process):
 	""" 
 	Forcefully kill a process and all its child processes.
@@ -86,6 +88,7 @@ def stop(process):
 kill = stopprocess = taskkill = stop
 
 @shared_content.Windowsonly
+@shared_content.assert_argument_type(str)
 def tasklist(process = ""):
 	"""
 	Get the list of running processes. 
@@ -131,6 +134,7 @@ def tasklist(process = ""):
 
 getprocess = tasklist
 
+@shared_content.assert_argument_type((str, file))
 def cat(f):
 	"""
 	Print the contents of a file.
@@ -158,6 +162,7 @@ def cat(f):
 stream = cat
 
 @shared_content.Windowsonly
+@shared_content.assert_argument_type((str, file))
 def more(f):
 	"""
 	Print the contents of a file 10 lines at a time.
@@ -291,6 +296,7 @@ def getdrives():
 psdrive = getdrives
 
 @shared_content.Windowsonly
+@shared_content.assert_argument_type(str)
 def eject(drive):
 	"""
 	Eject the cd tray whose path is the one specified.

@@ -11,7 +11,7 @@ cat(f)
 	
 	arguments:
 	
-	f: Name of file to read.  (Required)
+	f: File or name of file to read.  (Required)
 	
 	
 	synonymns: cat, stream
@@ -135,7 +135,7 @@ more(f)
 	
 	arguments:
 	
-	f: The file to read.   (Required)
+	f: File or name of file to read.   (Required)
 
 move(source, destination)
 	Moves item(s) from one location to another.
@@ -183,7 +183,7 @@ start(f)
 	
 	arguments:
 	
-	f: file or process to start. (Required)
+	f: Path of file or name of process to start. (Required)
 
 stop(process)
 	Forcefully kill a process and all its child processes.

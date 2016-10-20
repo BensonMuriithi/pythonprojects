@@ -58,7 +58,7 @@ def start(f):
 	
 	arguments:
 	
-	f: file or process to start. (Required)
+	f: Path of file or name of process to start. (Required)
 	"""
 	
 	os.startfile(f)

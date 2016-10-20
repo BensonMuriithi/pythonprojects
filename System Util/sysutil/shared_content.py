@@ -4,7 +4,6 @@ Functions and data shared by multiple modules of sysutil
 from functools import wraps
 import os
 from sys import platform
-from threading import BoundedSemaphore
 
 #paths to executables recycle and eject
 eject = os.path.join(os.path.dirname(os.path.abspath(__file__)), "executables\\eject.exe")
@@ -45,31 +44,23 @@ def assert_argument_type(expect = str, **specific):
 	Type ranges must only be in tuples and not any other type of collection.
 	"""
 	
-	bound_semaphore = BoundedSemaphore(1)
-	
 	def _raise(e = ""):
 		raise TypeError("Argument for type to expect must be a type, or \
-tuple of types. Provided", e)
+tuple of types.\nProvided", e)
 	
-	def check_type_types(*_types):
-		for t in _types:
-			if isinstance(t, type):
-				continue
-			elif isinstance(t, tuple):
-				if bound_semaphore.acquire(0):#maintain a maximum 1 level of recursion
-					#if a tuple was to contain other tuples instead of only types,
-					#the call to acquire will return False preventing another recursion
-					#and raise the TypeError
-					check_type_types(*t)
-					bound_semaphore.release()
-				else:
-					_raise(t)
-			else:
-				_raise(t)
-	
-	check_type_types(expect)
+	def check_type_type(_type):
+		if isinstance(_type, type):
+			pass
+		elif isinstance(_type, tuple):
+			for t in _type:
+				if not isinstance(t, type):
+					_raise("({}  {})".format(type(t).__name__, t))
+		else:
+			_raise("{}  ({})".format(type(_type).__name__, _type))
+		
+	check_type_type(expect)
 	for x in specific.itervalues():
-		check_type_types(x)
+		check_type_type(x)
 	
 	if isinstance(expect, type):
 		type_failed = expect.__name__

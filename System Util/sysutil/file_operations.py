@@ -198,7 +198,7 @@ def find(name):
 	acts as the basename therefore can have wildcards.
 	
 	arguments:
-	name: Name to search for in the directory.
+	name: Name(string) to search for in the directory.(Required)
 	
 	
 	synonymns: find, search
@@ -232,5 +232,6 @@ def find(name):
 				_xfinder(os.path.join(_dirname, d))
 	
 	_xfinder(os.path.dirname(x))
-	print "Your search got %d hits\n" % hit_count
+	print "Your search got {count} hit{s}\n".format(count = hit_count,
+					s = "" if hit_count is 1 else "s")
 

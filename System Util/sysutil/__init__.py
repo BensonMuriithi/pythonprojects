@@ -78,6 +78,22 @@ eject(drive)
 	
 	The function currently only works on Windows.
 
+find(name)
+	Searches for a name within a directory.
+	Any files in a directory and all its subdirectories that match the 
+	string given will be printed. Subdirectories whose basename laso matched
+	the string to search for are printed.
+	
+	Wildcars can be used but must be in the basename only ie, terminating name
+	of a path. If the name is not styled into a path or is in the cwd, the name
+	acts as the basename therefore can have wildcards.
+	
+	arguments:
+	name: Name(string) to search for in the directory.(Required)
+	
+	
+	synonymns: find, search
+
 getdrives()
 	Prints the info of drives connnected to the computer.
 	The function currently only works on windows and utilises the wmic command

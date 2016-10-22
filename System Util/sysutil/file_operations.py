@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import shared_content
+from dir_operations import __resolvehint
 
 class PathIsFileError(IOError):
 	"""
@@ -37,8 +38,6 @@ def __getfiles(location, destination = ""):
 	drname, base = os.path.dirname(location), os.path.basename(location)
 	
 	if "*" in base:
-		from dir_operations import __resolvehint
-		
 		for i in __resolvehint(drname, base):
 			yield os.path.join(drname, i)
 	else:
@@ -184,4 +183,54 @@ def wipe(f = ""):
 		if 'y' in raw_input("Clear console? (y / n) : ").lower():
 			from console_operations import cls
 			cls()
+
+
+@shared_content.assert_argument_type(str)
+def find(name):
+	"""
+	Searches for a name within a directory.
+	Any files in a directory and all its subdirectories that match the 
+	string given will be printed. Subdirectories whose basename laso matched
+	the string to search for are printed.
+	
+	Wildcars can be used but must be in the basename only ie, terminating name
+	of a path. If the name is not styled into a path or is in the cwd, the name
+	acts as the basename therefore can have wildcards.
+	
+	arguments:
+	name: Name to search for in the directory.
+	
+	
+	synonymns: find, search
+	"""
+	x = os.path.abspath(name)
+	name = os.path.basename(x)
+	if name.find('*') == -1:
+		name = '*' + name + '*'
+	
+	global hit_count
+	hit_count = 0
+	
+	print
+	def _xfinder(_dirname):
+		progression_tracker = 0
+		
+		for hit in __resolvehint(_dirname, name):
+			print os.path.join(_dirname, hit)
+			progression_tracker += 1
+		
+		if progression_tracker:
+			global hit_count
+			hit_count += progression_tracker
+			print
+		
+		for d in (i for i in os.listdir(_dirname) if \
+				os.path.isdir(os.path.join(_dirname, i))):
+			if not (d.lower().endswith(shared_content.__system_names_end) or \
+					d.lower().startswith(shared_content.__system_names_start)):
+				
+				_xfinder(os.path.join(_dirname, d))
+	
+	_xfinder(os.path.dirname(x))
+	print "Your search got %d hits\n" % hit_count
 

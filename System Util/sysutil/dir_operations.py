@@ -19,10 +19,6 @@ class InterimError(Exception):
 	"""
 
 
-__system_names_start = ("bootmgr", "bootnxt", "system", "skypee")
-__system_names_end = (".bin", ".ini", ".sys")
-#some names reserved for system files.
-
 STARTHINT, CONTAINHINT, ENDHINT = 0, 1, 2
 #constants specifying how name name matching of files should be assessed.
 
@@ -209,8 +205,9 @@ def popd():
 def __ls(pth, directory, indent = ""):
 	"""
 	Print the contents of a directory.
-	Names in the directory that correspond to those in either __system_names_start
-	or __system_names_end are omitted.
+	Names in the directory that correspond to those in either
+	shared_content.__system_names_start or shared_content.__system_names_end 
+	are omitted.
 	
 	All directories are printed before files, all in alphabetical order
 	
@@ -238,8 +235,8 @@ def __ls(pth, directory, indent = ""):
 		
 		dir_length = len(directory)
 		for i in xrange(dir_length):
-			if directory[i].lower().endswith(__system_names_end) or \
-					directory[i].lower().startswith(__system_names_start):
+			if directory[i].lower().endswith(shared_content.__system_names_end) or \
+				directory[i].lower().startswith(shared_content.__system_names_start):
 				
 				yield i
 	
@@ -310,8 +307,6 @@ def lsr(pth = "", afterfirst = False, hint = ""):
 	Map the contents of a directory. If no path is provided, the current working
 	directory is used.
 	
-	System files whose names match the tuples __system_names_start and __system_names_end
-	at the beginning or end are omitted.
 	Wildcards are supported and if used, only files matching the wildcards are listed
 	
 	The function uses ls to print the path to work on and the list the contents of that path.
@@ -348,9 +343,9 @@ def lsr(pth = "", afterfirst = False, hint = ""):
 	for f in os.listdir(pth):
 		fullname = os.path.join(pth, f)
 		if os.path.isdir(fullname) and not (
-				os.path.basename(fullname).lower().endswith(__system_names_end) or \
-				os.path.basename(fullname).lower().startswith(__system_names_start)
-				):
+			os.path.basename(fullname).lower().endswith(shared_content.__system_names_end) or \
+			os.path.basename(fullname).lower().startswith(shared_content.__system_names_start)
+			):
 			
 			lsr(fullname, afterfirst = True, hint = hint)
 	

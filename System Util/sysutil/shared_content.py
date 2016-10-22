@@ -9,6 +9,10 @@ from sys import platform
 eject = os.path.join(os.path.dirname(os.path.abspath(__file__)), "executables\\eject.exe")
 recycle = os.path.join(os.path.dirname(os.path.abspath(__file__)), "executables\\recycle.exe")
 
+__system_names_start = ("bootmgr", "bootnxt", "system", "skypee")
+__system_names_end = (".bin", ".ini", ".sys")
+#some names reserved for system files.
+
 def Windowsonly(f):
 	"""Decorate functions that require Windows"""
 	@wraps(f)
@@ -40,6 +44,12 @@ def assert_argument_type(expect = str, **specific):
 	
 	A range of types can also be specified for a keyword argument where
 	the range of types is a tuple of types.
+	
+	It is not advisable to use this function and it's returned decorator with
+	recursing functions. If absolutely necessary to do so, it would be better to
+	use an inner function to recurse with and this function decorating the
+	outer function that will be passed arguments by users.
+	In some cases it isn't much harm however.
 	
 	Type ranges must only be in tuples and not any other type of collection.
 	"""

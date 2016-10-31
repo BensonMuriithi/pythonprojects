@@ -8,6 +8,7 @@ import os
 import itertools
 import chardet
 import shared_content
+from contextlib import contextmanager
 
 def cls():
 	"""
@@ -118,7 +119,7 @@ def tasklist(process = ""):
 		
 		f.seek(0)
 		added_names = set()#I think the below search using the 'in' keyword
-		#will be faster on a set than a list.
+		#will be better on a set than a list.
 			
 		for l in f:
 			exe_location = l.find(".exe")
@@ -134,6 +135,28 @@ def tasklist(process = ""):
 
 getprocess = tasklist
 
+@contextmanager
+def _getfileobject(f):
+	"""
+	Contextmanager helper function for cat and more.
+	Gets a file object from the argument passed to cat or more and seeks to 
+	the start before giving it to the funtion it is helping.
+	If a file object can not be attained from the provided argument, it raises
+	an IOError
+	"""
+	
+	if isinstance(f, file):
+		if f.closed:
+			f = open(f.name)
+	elif os.path.isfile(f):
+		f = open(f)
+	else:
+		raise IOError("Can only read contents of files.")
+	
+	f.seek(0)
+	yield f
+	f.close()
+
 @shared_content.assert_argument_type((str, file))
 def cat(f):
 	"""
@@ -143,21 +166,10 @@ def cat(f):
 	
 	f: File or name of file to read.  (Required)
 	
-	
 	synonymns: cat, stream
 	"""
-	
-	if isinstance(f, file):
-		if f.closed:
-			f = open(f.name)
-	elif os.path.isfile(f):
-		f = open(f)
-	else:
-		raise IOError("Can only stream files.")
-		return
-	
-	with f:
-		print "".join(f)
+	with _getfileobject(f) as ff:
+		print "".join(ff)
 
 stream = cat
 
@@ -171,13 +183,6 @@ def more(f):
 	
 	f: File or name of file to read.   (Required)
 	"""
-	if isinstance(f, file):
-		if f.closed:
-			f = open(f.name)
-	elif os.path.isfile(f):
-		f = open(f)
-	else:
-		raise IOError("Can only read contents of files.")
 	
 	import msvcrt#reason for Windows only. Posix equivalent of current
 	#get_morecharater will be included
@@ -188,7 +193,7 @@ def more(f):
 		
 		return msvcrt.getch()
 	
-	with f as xfr:
+	with _getfileobject(f) as xfr:
 		step = 25
 		
 		lines = 0
@@ -199,9 +204,9 @@ def more(f):
 		while 1:
 			print "\r" + "".join(itertools.islice(xfr, 0, step))
 			#despite this, if the first line in an iteration has a newline as
-			#the first character, (or is empty), the string __ More __ won't 
+			#the first character, (or is empty), the string -- More -- won't 
 			#be escaped and will be included in the output
-			#let m be __ More __
+			#let m be -- More --
 			#This holds true for first lines after m that are shorter
 			#than m. The first string will be printed and the remainder length
 			#of m will be concatenated to the first string.
@@ -269,29 +274,22 @@ def getdrives():
 	for f in result_files:
 		f.seek(0)
 	
-	def format_cmdoutput(s):#Output of wmic is encoded in utf-16_le
-		encoding = chardet.detect(s)#pypi package to detect encoding
-		return s.decode(encoding["encoding"], 'ignore')[1:].rstrip()
-	
 	format_template = "\t{0}\t\t\t   {1}\t\t  {2}"
 	#result of trial and error for best fit .join() isn't flexible enough
 	
-	print format_template.format(*(format_cmdoutput(f.readline()) for f in result_files))
+	print format_template.format(*(shared_content.format_cmdoutput(f.readline())\
+						for f in result_files))
 	
 	print "  {0}\t\t{1}\t\t{2}".format(*itertools.repeat("-"*15, len(result_files)))
 	
-	for i in itertools.izip(namefile, volumenamefile, freespacefile):
-		name, vol_name, space = (x.replace("\x00", "").rstrip() for x in i)
-		
-		print format_template.format(name or "Unknown",#Some drives are detected
-			#but aren't registered so requests for their name are blank
-			
-			vol_name or "Unavailable",#A drive eg dvd-rom are registered but 
-			#are inactive thus no volume name
-			
-			space and str(round((float(space) / 10 ** 9), 1)) + " GB"\
-				or "Unavailable")
-
+	for i in itertools.izip(*result_files):
+		name, vol_name, space = (shared_content.format_cmdoutput(s) for s in i)
+		if name:
+			print format_template.format(name,
+				vol_name or ("(CD-ROM)" if name in shared_content.cddrives()\
+							else "Unavailable"),
+				space and str(round((float(space) / 10 ** 9), 1)) + " GB"\
+					or "Unavailable")
 
 psdrive = getdrives
 

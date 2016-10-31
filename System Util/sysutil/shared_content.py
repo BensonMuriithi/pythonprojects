@@ -4,13 +4,18 @@ Functions and data shared by multiple modules of sysutil
 from functools import wraps
 import os
 from sys import platform
+import chardet
+import subprocess
+import tempfile
+from itertools import takewhile
 
 #paths to executables recycle and eject
 eject = os.path.join(os.path.dirname(os.path.abspath(__file__)), "executables\\eject.exe")
 recycle = os.path.join(os.path.dirname(os.path.abspath(__file__)), "executables\\recycle.exe")
 
-__system_names_start = ("bootmgr", "bootnxt", "system", "skypee")
-__system_names_end = (".bin", ".ini", ".sys")
+_system_names_start = ("bootmgr", "bootnxt", "system", "skypee")
+_system_names_end = (".bin", ".ini", ".sys", ".msi")
+_cddrives = None
 #some names reserved for system files.
 
 def Windowsonly(f):
@@ -106,4 +111,27 @@ tuple of types.\nProvided", e)
 		return arg_type_deco
 	return true_asserter
 
+def format_cmdoutput(s):#Output of wmic is encoded in utf-16_le
+	"""
+	Decode the output of cmd when required into unicode.
+	
+	Requires the chardet package installed. (pip install chardet)
+	"""
+	encoding = chardet.detect(s)#pypi package to detect encoding
+	return s.decode(encoding["encoding"], 'ignore')[1:].replace("\x00", "").rstrip()
+
+#Works only on Windows as is
+def cddrives():
+	"""
+	Gets the drives that are cd-roms using the wmic command on cmd
+	"""
+	global _cddrives
+	if _cddrives is None:
+		f = tempfile.TemporaryFile(bufsize = 0)
+		subprocess.call("wmic cdrom get drive", stdout = f, bufsize = 0)
+		f.seek(0)
+		next(f)
+		_cddrives = tuple(takewhile(lambda x: x, (format_cmdoutput(drive) for drive in f)))
+	
+	return _cddrives
 

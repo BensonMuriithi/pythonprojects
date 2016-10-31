@@ -101,7 +101,7 @@ getdrives()
 	
 	synonymns: getdrives, psdrive
 
-ls(pth = "", indent = "")
+ls(pth = "")
 	Prints the contents of the specified directory
 	beginning with folders and then files, each sorted alphabetically.
 	If wildcards are used in the base of the path (ending), the item(s) in the 
@@ -112,33 +112,21 @@ ls(pth = "", indent = "")
 	arguments:
 	
 	pth: The path to operate on. (Optional)
-	indent: Indentation string to prefix a directory's contents.
-	  Meant to be used by lsr.  (Optional)
+	
 	
 	synonymns: ls, dir
 
-lsr(pth = "", afterfirst = False, hint = "")
+lsr(pth = "")
 	Map the contents of a directory. If no path is provided, the current working
 	directory is used.
 	
-	System files whose names match the tuples __system_names_start and __system_names_end
-	at the beginning or end are omitted.
-	Wildcards are supported and if used, only files matching the wildcards are listed
+	Wildcards can be used.
 	
-	The function uses ls to print the path to work on and the list the contents of that path.
-	The function then iterates over any paths below this and recurses.
+	The function lists the contents of a path that match any filter if any and recurses
+	over every directory under the path.
 	
 	arguments:
 	 pth: The parent path to work on.  (Optional)
-	 afterfirst: Reserved for this function's internal use.
-	  It is used to check for whether the path has a hint on first call only.
-	     (Not to use)
-	 hint:If the path provided to this function has a wildcard, the wildcard is
-	  extracted and separated from the path and the path set to its dir name so 
-	  it is possible to recurse over the child paths of the dirname. The hint is then
-	  joined to each path and passed to ls so only items matching the hint in each 
-	  directory are printed. Reserved for use by this function only.
-	      (Not to use.)
 	
 	
 	synonymns: lsr, dir_r
@@ -238,7 +226,7 @@ initvars = vars()
 
 for mod in file_operations, console_operations, dir_operations:
 	for name, f in vars(mod).items():
-		if type(f) == types.FunctionType and not name.startswith("__"):
+		if type(f) == types.FunctionType and not name.startswith("_"):
 			initvars[name] = f
 
 del file_operations, types, console_operations, dir_operations, initvars

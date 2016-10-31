@@ -6,7 +6,7 @@ import os
 import shutil
 import subprocess
 import shared_content
-from dir_operations import __resolvehint
+from dir_operations import _resolvehint
 
 class PathIsFileError(IOError):
 	"""
@@ -21,7 +21,7 @@ class FileLocationError(IOError):
 	"""
 
 
-def __getfiles(location, destination = ""):
+def _getfiles(location, destination = ""):
 	"""
 	Evaluates validity of source and destination paths. ie. source must exist
 	and destination, if given, must be a directory.
@@ -38,7 +38,7 @@ def __getfiles(location, destination = ""):
 	drname, base = os.path.dirname(location), os.path.basename(location)
 	
 	if "*" in base:
-		for i in __resolvehint(drname, base):
+		for i in _resolvehint(drname, base):
 			yield os.path.join(drname, i)
 	else:
 		if not os.path.exists(location):
@@ -59,7 +59,7 @@ def copy(source, destination):
 	
 	synonymns: copy, cp
 	"""
-	for f in __getfiles(source, destination):
+	for f in _getfiles(source, destination):
 		try:
 			if os.path.isfile(f):
 				shutil.copy2(f, destination)
@@ -86,7 +86,7 @@ def move(source, destination):
 	synonymns: move, mv
 	"""
 	
-	for f in __getfiles(source):
+	for f in _getfiles(source):
 		try:
 			shutil.move(f, destination)
 		except:
@@ -122,7 +122,7 @@ def delete(filename, force = ""):
 	if force != "f":
 		subprocess.call([shared_content.recycle, filename])
 	else:
-		for f in __getfiles(filename):
+		for f in _getfiles(filename):
 			try:
 				if os.path.isfile(f):
 					os.remove(f)
@@ -215,7 +215,7 @@ def find(name):
 	def _xfinder(_dirname):
 		progression_tracker = 0
 		
-		for hit in __resolvehint(_dirname, name):
+		for hit in _resolvehint(_dirname, name):
 			print os.path.join(_dirname, hit)
 			progression_tracker += 1
 		
@@ -226,8 +226,8 @@ def find(name):
 		
 		for d in (i for i in os.listdir(_dirname) if \
 				os.path.isdir(os.path.join(_dirname, i))):
-			if not (d.lower().endswith(shared_content.__system_names_end) or \
-					d.lower().startswith(shared_content.__system_names_start)):
+			if not (d.lower().endswith(shared_content._system_names_end) or \
+					d.lower().startswith(shared_content._system_names_start)):
 				
 				_xfinder(os.path.join(_dirname, d))
 	

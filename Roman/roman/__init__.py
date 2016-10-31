@@ -1,3 +1,8 @@
+"""
+Evaluates and converts Roman numbers to integers and vice versa.
+The functions only support Roman numbers below 4000 for conversions.
+"""
+
 from re import compile as _compile
 
 class InvalidRoman(ValueError): pass

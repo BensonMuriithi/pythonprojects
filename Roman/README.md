@@ -2,10 +2,10 @@ This program converts string Roman numbers to integers and vice-versa.
 
 Functions:
 
-roman2.getint(roman_number) -> int
+roman.getint(roman_number) -> int
 	returns the integral value of a Roman number supplied as a string
 
-roman2.getroman(number) -> str
+roman.getroman(number) -> str
 	returns an uppercase string holding the Roman representation of a number
 
 The range of numbers supported is 1 - 3999 by both functions.

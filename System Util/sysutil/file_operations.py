@@ -186,7 +186,6 @@ def wipe(f = ""):
 			from console_operations import cls
 			cls()
 
-@shared_content.Windowsonly
 @shared_content.assert_argument_type(str)
 def find(name):
 	"""
@@ -205,36 +204,54 @@ def find(name):
 	
 	synonymns: find, search
 	"""
-	x = os.path.abspath(name)
-	name = os.path.basename(x)
-	if name.find('*') == -1:
-		name = '*' + name + '*'
+	x = None
+	if ":" or "\\" or "/" in name:
+		x = os.path.abspath(name)
+		name = os.path.basename(x)
+		x = os.path.dirname(x)
 	
-	global hit_count
+	name = name.lower()
+	
+	if "*" not in name:
+		func = lambda x: name in x.lower()
+	elif name.startswith("*"):
+		func = lambda x: x.lower().endswith(name[1:])
+	elif name.endswith("*"):
+		func = x.lower().startswith(name[:-1])
+	else:
+		raise OSError("File names cannot contain special characters like '*'.{}".format(
+				" %s is an illegal filename" % name))
+	
 	hit_count = 0
-	
 	print
-	def _xfinder(_dirname):
-		progression_tracker = 0
-		
-		for hit in ifilter(None, _resolvehint(_dirname, name)):
-			print os.path.join(_dirname, hit)
-			progression_tracker += 1
-		
-		if progression_tracker:
-			global hit_count
-			hit_count += progression_tracker
-			print
-		
-		try:
-			for f in ifilterfalse(shared_content.is_system_file, os.listdir(_dirname)):
-				d = os.path.join(_dirname, f)
-				if os.path.isdir(d):
-					_xfinder(d)
-		except WindowsError:
-			pass
 	
-	_xfinder(os.path.dirname(x))
+	for root, dirs, files in os.walk(x or os.path.dirname(os.path.abspath(name))):
+		d = ifilter(func, ifilterfalse(shared_content.is_system_file, dirs))
+		f = ifilter(func, ifilterfalse(shared_content.is_system_file, files))
+		try:
+			print os.path.join(root, next(d))
+			hit_count += 1
+		except StopIteration:
+			try:
+				print os.path.join(root, next(f))
+				hit_count += 1
+			except StopIteration:
+				continue
+			else:
+				for i in f:
+					print os.path.join(root, i)
+					hit_count += 1
+		else:
+			for i in d:
+				print os.path.join(root, i)
+				hit_count += 1
+			for i in f:
+				print os.path.join(root, i)
+				hit_count += 1
+		
+		print
+		
+	
 	print "Your search got {count} hit{s}\n".format(count = hit_count,
 					s = "" if hit_count is 1 else "s")
 

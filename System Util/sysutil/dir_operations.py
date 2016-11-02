@@ -22,10 +22,6 @@ class InterimError(Exception):
 STARTHINT, CONTAINHINT, ENDHINT = 0, 1, 2
 #constants specifying how name name matching of files should be assessed.
 
-def _is_system_file(x):
-	return x.lower().endswith(shared_content._system_names_end) or \
-		x.lower().startswith(shared_content._system_names_start)
-	
 def _resolvefromdirlist(pth, hint, hintpos):
 	"""
 	Resolves the names in the directory pth that match with hint as per the
@@ -41,18 +37,21 @@ def _resolvefromdirlist(pth, hint, hintpos):
 	#less comprehensible.
 	
 	hint = hint.lower()
-	if hintpos == STARTHINT:
-		for f in os.listdir(pth):
-			if f.lower().startswith(hint):
-				yield f
-	elif hintpos == CONTAINHINT:
-		for f in os.listdir(pth):
-			if f.lower().find(hint) != -1:
-				yield f
-	elif hintpos == ENDHINT:
-		for f in os.listdir(pth):
-			if f.lower().endswith(hint):
-				yield f
+	try:
+		if hintpos == STARTHINT:
+			for f in os.listdir(pth):
+				if f.lower().startswith(hint):
+					yield f
+		elif hintpos == CONTAINHINT:
+			for f in os.listdir(pth):
+				if f.lower().find(hint) != -1:
+					yield f
+		elif hintpos == ENDHINT:
+			for f in os.listdir(pth):
+				if f.lower().endswith(hint):
+					yield f
+	except WindowsError:
+		yield
 	
 
 def _resolvehint(pth, hint):
@@ -172,7 +171,7 @@ def _ls(pth, directory, indent = ""):
 	files = []
 	#Print directories while skipping files and adding them to 'files'
 	#for later printing
-	for i in itertools.ifilterfalse(_is_system_file,\
+	for i in itertools.ifilterfalse(shared_content.is_system_file,\
 					sorted(directory, key = lambda name: name.lower())):
 		
 		if os.path.isdir(os.path.join(pth, i)):
@@ -249,7 +248,7 @@ def lsr(pth = ""):
 			
 		for f in os.listdir(_path):
 			name = os.path.join(_path, f)
-			if os.path.isdir(name) and not _is_system_file(os.path.basename(name)):
+			if os.path.isdir(name) and not shared_content.is_system_file(os.path.basename(name)):
 				
 				_recurse_dir(name, hint)
 	

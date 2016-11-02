@@ -13,8 +13,8 @@ from itertools import takewhile
 eject = os.path.join(os.path.dirname(os.path.abspath(__file__)), "executables\\eject.exe")
 recycle = os.path.join(os.path.dirname(os.path.abspath(__file__)), "executables\\recycle.exe")
 
-_system_names_start = ("bootmgr", "bootnxt", "system", "skypee")
-_system_names_end = (".bin", ".ini", ".sys", ".msi")
+_system_names_start = ("bootmgr", "bootnxt", "system", "skypee", "config")
+_system_names_end = (".bin", ".ini", ".sys", ".msi", "documents and settings")
 _cddrives = None
 #some names reserved for system files.
 
@@ -134,4 +134,8 @@ def cddrives():
 		_cddrives = tuple(takewhile(lambda x: x, (format_cmdoutput(drive) for drive in f)))
 	
 	return _cddrives
+
+def is_system_file(x):
+	return x.lower().endswith(_system_names_end) or \
+		x.lower().startswith(_system_names_start)
 

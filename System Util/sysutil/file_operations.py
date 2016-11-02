@@ -7,6 +7,8 @@ import shutil
 import subprocess
 import shared_content
 from dir_operations import _resolvehint
+from itertools import ifilterfalse
+from itertools import ifilter
 
 class PathIsFileError(IOError):
 	"""
@@ -184,7 +186,7 @@ def wipe(f = ""):
 			from console_operations import cls
 			cls()
 
-
+@shared_content.Windowsonly
 @shared_content.assert_argument_type(str)
 def find(name):
 	"""
@@ -215,7 +217,7 @@ def find(name):
 	def _xfinder(_dirname):
 		progression_tracker = 0
 		
-		for hit in _resolvehint(_dirname, name):
+		for hit in ifilter(None, _resolvehint(_dirname, name)):
 			print os.path.join(_dirname, hit)
 			progression_tracker += 1
 		
@@ -224,12 +226,13 @@ def find(name):
 			hit_count += progression_tracker
 			print
 		
-		for d in (i for i in os.listdir(_dirname) if \
-				os.path.isdir(os.path.join(_dirname, i))):
-			if not (d.lower().endswith(shared_content._system_names_end) or \
-					d.lower().startswith(shared_content._system_names_start)):
-				
-				_xfinder(os.path.join(_dirname, d))
+		try:
+			for f in ifilterfalse(shared_content.is_system_file, os.listdir(_dirname)):
+				d = os.path.join(_dirname, f)
+				if os.path.isdir(d):
+					_xfinder(d)
+		except WindowsError:
+			pass
 	
 	_xfinder(os.path.dirname(x))
 	print "Your search got {count} hit{s}\n".format(count = hit_count,

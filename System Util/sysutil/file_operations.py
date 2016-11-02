@@ -205,7 +205,7 @@ def find(name):
 	synonymns: find, search
 	"""
 	x = None
-	if ":" or "\\" or "/" in name:
+	if ":" or "\\" or "/" in name:#one has specified a path to search in
 		x = os.path.abspath(name)
 		name = os.path.basename(x)
 		x = os.path.dirname(x)
@@ -254,4 +254,8 @@ def find(name):
 	
 	print "Your search got {count} hit{s}\n".format(count = hit_count,
 					s = "" if hit_count is 1 else "s")
+
+search = find
+
+
 

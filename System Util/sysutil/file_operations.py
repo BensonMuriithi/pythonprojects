@@ -217,7 +217,7 @@ def find(name):
 	elif name.startswith("*"):
 		func = lambda x: x.lower().endswith(name[1:])
 	elif name.endswith("*"):
-		func = x.lower().startswith(name[:-1])
+		func = lambda x: x.lower().startswith(name[:-1])
 	else:
 		raise OSError("File names cannot contain special characters like '*'.{}".format(
 				" %s is an illegal filename" % name))

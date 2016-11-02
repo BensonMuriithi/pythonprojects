@@ -14,7 +14,7 @@ eject = os.path.join(os.path.dirname(os.path.abspath(__file__)), "executables\\e
 recycle = os.path.join(os.path.dirname(os.path.abspath(__file__)), "executables\\recycle.exe")
 
 _system_names_start = ("bootmgr", "bootnxt", "system", "skypee", "config")
-_system_names_end = (".bin", ".ini", ".sys", ".msi", "documents and settings")
+_system_names_end = (".bin", ".ini", ".sys", ".git", ".msi", "documents and settings")
 _cddrives = None
 #some names reserved for system files.
 

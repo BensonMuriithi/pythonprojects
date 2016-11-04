@@ -222,12 +222,10 @@ wipe(f = "")
 import file_operations, console_operations, dir_operations
 import types
 
-initvars = vars()
+_modules = file_operations, console_operations, dir_operations
 
-for mod in file_operations, console_operations, dir_operations:
-	for name, f in vars(mod).items():
-		if type(f) == types.FunctionType and not name.startswith("_"):
-			initvars[name] = f
+vars().update({name: func for mod in _modules for name, func in vars(mod).items()\
+	if type(func) == types.FunctionType and not name.startswith("_")})
 
-del file_operations, types, console_operations, dir_operations, initvars
+del file_operations, types, console_operations, dir_operations
 

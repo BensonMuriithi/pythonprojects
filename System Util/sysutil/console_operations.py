@@ -80,7 +80,8 @@ def stop(process):
 	
 	outputfile = tempfile.TemporaryFile()
 	
-	result = subprocess.call("taskkill /f /t /im {}.exe".format(process),
+	process = process.rstrip(".exe")
+	result = subprocess.call("taskkill /f /t /im %s.exe" % process,
 		stdout = outputfile, stderr = outputfile)
 	
 	if result != 0:
@@ -105,7 +106,7 @@ def tasklist(process = ""):
 	"""
 	
 	if process:
-		subprocess.call("tasklist /fi \"imagename eq {}.exe\"".format(process))
+		subprocess.call("tasklist /fi \"imagename eq %s.exe\"" % process.rstrip(".exe"))
 		print
 		return
 	

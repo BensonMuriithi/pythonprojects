@@ -37,7 +37,7 @@ def _getfiles(location, destination = ""):
 		raise PathIsFileError("Copy or move must be to a directory not file.")
 	
 	location = os.path.abspath(location)
-	drname, base = os.path.dirname(location), os.path.basename(location)
+	drname, base = os.path.split(location)
 	
 	if "*" in base:
 		for i in _resolvehint(drname, base):
@@ -206,9 +206,7 @@ def find(name):
 	"""
 	x = None
 	if ":" or "\\" or "/" in name:#one has specified a path to search in
-		x = os.path.abspath(name)
-		name = os.path.basename(x)
-		x = os.path.dirname(x)
+		x, name = os.path.split(os.path.abspath(name))
 	
 	name = name.lower()
 	
@@ -219,8 +217,10 @@ def find(name):
 	elif name.endswith("*"):
 		func = lambda x: x.lower().startswith(name[:-1])
 	else:
-		raise OSError("File names cannot contain special characters like '*'.{}".format(
-				" %s is an illegal filename" % name))
+		raise ValueError(
+			"File names cannot contain special characters like '*'.{}".format(
+			" %s is an illegal filename" % name)
+		)
 	
 	hit_count = 0
 	print

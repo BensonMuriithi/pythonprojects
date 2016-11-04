@@ -77,9 +77,6 @@ def _resolvehint(pth, hint):
 					hint, "Asterisk can only be positioned at start or end : non-exclusive"))
 
 
-#One can disable the try and handle of WindowsError that
-#ejects the cd tray for the function to be cross-platform
-@shared_content.Windowsonly
 def _resolve_cdpath(pth):
 	"""
 	Resolves a path only for purposes of changing directory.
@@ -87,31 +84,29 @@ def _resolve_cdpath(pth):
 	the result of the resolve must be the path to a directory.
 	"""
 	
+	separator = os.name == "nt" and "\\" or "/"
 	resolvedpth = ""
 	try:
-		#os.path.abspath(pth).split("\\") below will result in the first value
-		#of piece being the drive therefore _resolvehint will never be called
-		#with resolvedpth being an empty string as it will at the very least
-		#contain the drive
-		for piece in os.path.abspath(pth).split("\\"):
-			if "*" in piece:
+		for piece in os.path.abspath(pth).split(separator):
+			if "*" not in piece:
+				resolvedpth += piece + separator
+			else:
 				resolved_iter = list(_resolvehint(resolvedpth, piece))
 				if len(resolved_iter) != 1:
 					raise InterimError
-				resolvedpth += resolved_iter[0] + "\\"
-			else:
-				resolvedpth += piece + "\\"
-				if os.path.isdir(resolvedpth):
-					continue
+				resolvedpth += resolved_iter[0] + separator
+			
+			if os.path.isdir(resolvedpth):
+				continue
+			
+			if len(resolvedpth) <= 3 and os.name=="nt" and \
+					resolvedpth.rstrip("\\") in shared_content.cddrives():
 				
-				if len(resolvedpth) <= 3 and resolvedpth.rstrip("\\") in\
-												shared_content.cddrives():
-					
-					from console_operations import eject
-					eject(resolvedpth)
-					return None
-				
-				raise InterimError
+				from console_operations import eject
+				eject(resolvedpth)
+				return None
+			
+			raise InterimError
 	
 	except InterimError:
 		raise InvalidPathError("{} is not a valid path.".format(pth))
@@ -147,40 +142,6 @@ def cd(pth = ""):
 
 chdir = cd
 
-#no need to check argument type of internal funtions.
-def _ls(pth, directory, indent = ""):
-	"""
-	Print the contents of a directory.
-	Names in the directory that correspond to those in either
-	shared_content._system_names_start or shared_content._system_names_end 
-	are omitted.
-	
-	All directories are printed before files, all in alphabetical order
-	
-	arguments:
-	pth: The path being operated on. (Required)
-	directory: a list or iterator containing the contents of pth.
-	 This can be obtained by calling os.listdir(pth)   (Required)
-	indent: String to prefix when printing names of items in the directory.
-	 This was added since this function is utilized by both ls and lsr and
-	 lsr requires the contents of each path it iterates to be indented one tab 
-	 from the where the path is printed so one can easily contrast a path name 
-	 and its contents.
-	"""
-	
-	files = []
-	#Print directories while skipping files and adding them to 'files'
-	#for later printing
-	for i in itertools.ifilterfalse(shared_content.is_system_file,\
-					sorted(directory, key = lambda name: name.lower())):
-		
-		if os.path.isdir(os.path.join(pth, i)):
-			print indent + i
-		else:
-			files.append(i)
-	
-	if files:
-		print indent + ("\n" + indent).join(files)
 
 @shared_content.assert_argument_type(str)
 def ls(pth = ""):
@@ -201,18 +162,30 @@ def ls(pth = ""):
 	"""
 	
 	if "*" in pth:
-		_dir = os.path.dirname(os.path.abspath(pth))
-		contents = _resolvehint(_dir, os.path.basename(pth))
+		_dir, p = os.path.split(os.path.abspath(pth))
+		if not os.path.isdir(_dir):
+			raise InvalidPathError("The directory {} does not exist.".format(_dir))
+		contents = _resolvehint(_dir, p)
 	else:
 		_dir = pth or os.getcwd()
+		if not os.path.isdir(_dir):
+			raise InvalidPathError("The directory {} does not exist.".format(_dir))
 		contents = 0
-	
-	if not os.path.isdir(_dir):
-		raise InvalidPathError("The directory {} does not exist.".format(_dir))
 	
 	print "\n%s\n" % _dir
 	
-	_ls(_dir, contents or os.listdir(_dir), "")
+	files = []
+	for i in itertools.ifilterfalse(shared_content.is_system_file,
+					sorted(contents or os.listdir(_dir),
+							key = lambda name: name.lower())):
+		
+		if os.path.isdir(os.path.join(pth, i)):
+			print i
+		else:
+			files.append(i)
+	
+	if files:
+		print "\n".join(files)
 	
 	print
 
@@ -236,34 +209,39 @@ def lsr(pth = ""):
 	synonymns: lsr, dir_r
 	"""
 	
-	def _recurse_dir(_path, hint):
-		if hint:
-			directory = list(_resolvehint(_path, hint))
-			if directory:
-				print "\n%s\n" % _path
-				_ls(_path, directory, "\t")
-		else:
-			print "\n%s\n" % _path
-			_ls(_path, os.listdir(_path), "\t")
-			
-		for f in os.listdir(_path):
-			name = os.path.join(_path, f)
-			if os.path.isdir(name) and not shared_content.is_system_file(os.path.basename(name)):
-				
-				_recurse_dir(name, hint)
-	
 	if "*" in pth:
-		_dir = os.path.dirname(os.path.abspath(pth))
-		_hint = os.path.basename(pth)
+		_dir, hint = os.path.split(os.path.abspath(pth))
 	else:
-		_dir, _hint = pth or os.getcwd(), ""
+		_dir, hint = pth or os.getcwd(), ""
 	
 	if not os.path.isdir(_dir):
-		raise InvalidPathError("The directory {} does not exist.".format(_dir))
+		raise InvalidPathError("{} is not an existing directory".format(_dir))
 	
-	_recurse_dir(_dir, _hint)
+	if hint:
+		if hint.startswith("*") and hint.endswith("*"):
+			func = lambda i: hint[1:-1] in i
+		elif hint.startswith("*"):
+			func = lambda x: x.lower().endswith(hint[1:])
+		elif hint.endswith("*"):
+			func = lambda x: x.lower().startswith(hint[:-1])
+		else:
+			raise ValueError("Wildcard cannot be within a name. {}".format(
+				"it should be at the start or end. ", hint))
+	else:
+		func = lambda i: True
+	
+	for root, dirs, files in os.walk(_dir):
+		d = filter(func,\
+				itertools.ifilterfalse(shared_content.is_system_file, dirs))
+		f = filter(func,\
+				itertools.ifilterfalse(shared_content.is_system_file, files))
+		
+		if f or d:
+			print "\n%s\n" % root
+			print "\t" + "\n\t".join(d + f)
 	
 	print
+
 
 dir_r = lsr
 

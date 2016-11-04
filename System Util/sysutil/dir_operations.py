@@ -277,23 +277,35 @@ def mkdir(name):
 
 class PushPopD(object):
 	"""
-	Class for creating an object that will hold the directories involved in
-	the calls of pushd and popd.
-	
-	popd switches the current working directory between the working directory when
-	pushd is called and the directory specified to pushd.
+	Store the addresses for pushd and popd functions
 	"""
-	def __init__(self, currentpath, pushpath):
-		
-		self.paths = itertools.cycle((currentpath, pushpath))
-		next(self.paths)#position at the path to push to.
+	@classmethod
+	def set_push_path(cls, pushpath):
+		if pushpath.replace("/", "\\").rstrip("\\") == os.getcwd().rstrip("\\"):
+			try:
+				next(cls.paths)
+				return
+			except AttributeError:
+				pass
+		cls.paths = itertools.cycle((os.getcwd(), pushpath))
+		next(cls.paths)
 	
-	def popd(self):
-		os.chdir(next(self.paths))
+	@classmethod
+	def get_pop_path(cls):
+		return next(cls.paths)
+
+def popd():
+	"""
+	Switches the current working directory between that before pushd
+	was called and the working directory after pushd was called.
+	
+	Nothing happens if pushd hasn't been called.
+	"""
+	try:
+		os.chdir(PushPopD.get_pop_path())
 		cwd()
-
-
-__pushpopobj = None
+	except AttributeError:
+		print "Popd unavailable."
 
 @shared_content.assert_argument_type(str)
 def pushd(pth):
@@ -303,21 +315,8 @@ def pushd(pth):
 	
 	A global variable is preferred so it can be shared by both pushd and popd.
 	"""
-	global __pushpopobj
-	_pth = _resolve_cdpath(pth)
-	if _pth:
-		__pushpopobj = PushPopD(os.getcwd(), _pth)
-		__pushpopobj.popd()
-
-def popd():
-	"""
-	Switches the current working directory between that before pushd
-	was called and the working directory after pushd was called.
-	
-	Nothing happens if pushd hasn't been called.
-	"""
-	if __pushpopobj:
-		__pushpopobj.popd()
-	else:
-		print "Popd unavailable."
+	path = _resolve_cdpath(pth)
+	if path:
+		PushPopD.set_push_path(path)
+		popd()
 

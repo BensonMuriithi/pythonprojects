@@ -194,36 +194,38 @@ def more(f):
 		return msvcrt.getch()
 	
 	with _getfileobject(f) as xfr:
-		step = 25
+		step = 40
 		
 		lines = 0
 		for l in xfr:
 			lines += 1
-		xfr.seek(0)
 		
-		while 1:
-			print "\r" + "".join(itertools.islice(xfr, 0, step))
-			#despite this, if the first line in an iteration has a newline as
-			#the first character, (or is empty), the string -- More -- won't 
-			#be escaped and will be included in the output
-			#let m be -- More --
-			#This holds true for first lines after m that are shorter
-			#than m. The first string will be printed and the remainder length
-			#of m will be concatenated to the first string.
-			
-			lines -= step
-			if lines > 0:
-				if lines <= 2:
-					#Escape the possibility commented above
-					continue
-				print "-- More --",
-				if get_morecharater() not in (' ', '\r'):
-					to_step = 2
+		num_of_lines = lines
+		more_string_length = len("-- More -- ({}%)")
+		xfr.seek(0)
+		try:
+			while 1:
+				print "".join(itertools.islice(xfr, 0, step))
+				lines -= step
+				
+				if lines > 0:
+					print "-- More -- ({}%)".format(
+						int(round((float(num_of_lines - lines) / num_of_lines) * 100))),
+					
+					if get_morecharater() not in (' ', '\r'):
+						to_step = 2
+					else:
+						to_step = 25
+					
+					after_more = next(xfr)
+					print "\r{}{}".format(after_more.rstrip("\n"),
+							" "*(more_string_length -len(after_more) + 1))
+					lines -= 1
 				else:
-					to_step = 25
-			else:
-				break
-			step = to_step
+					break
+				step = to_step
+		except KeyboardInterrupt:
+			print "\r^C" + " " * (more_string_length-2)
 
 
 @shared_content.Windowsonly

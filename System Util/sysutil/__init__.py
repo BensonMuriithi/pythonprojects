@@ -27,14 +27,6 @@ cls()
 	Wipes all text on the shell but input history and namespace variables
 	are not affected.
 
-clear(variables, *omit)
-	Clears the variables in the dict provided for an object.
-	If 'variables' is an object other than dict, and not built-in, it's __dict__
-	member is used.
-	
-	All members of variables apart from those starting with '__' or included
-	in omit are deleted.
-
 cwd()
 	Prints the current working directory.
 
@@ -74,9 +66,11 @@ delete(filename, force = "")
 	synonymns: rm, delete, remove
 
 eject(drive)
-	Eject the cd tray whose path is the one specified.
+	Eject the cd tray of a drive specified.
+	If no drive is specified, it is checked if there is exactly one drive with
+	a cd tray connected to the computer and if so that cd tray is ejected.
 	
-	The function currently only works on Windows.
+	The function currently relies on an executable and only works on Windows.
 
 find(name)
 	Searches for a name within a directory.
@@ -169,13 +163,31 @@ rename(old, new)
 	synonymns: rename, rni
 
 restartcomputer()
-	Completely shuts down the computer then restarts it.
+	Restarts the local computer after a given time in seconds.
+	
+	If a positive number is provided as an argument, a timer is
+	set for the computer to restart and the user is provided with a
+	countdown to abort the operation.
+	If a negative number or no number is given for the wait time, the wait
+	time used is 15 seconds
+	
+	arguments:
+	 wait -> A number representing the period to restart the computer after.
+			If a negative number is given, the default 15 seconds is used.
 	
 	synonymns: restartcomputer, restart
 
 shutdown()
-	Shuts down the local computer.
+	Shuts down the local computer after a given time in seconds.
+	If a positive number is provided as an argument, a timer is
+	set for the computer to shutdown and the user is provided with a
+	countdown to abort the operation.
+	If a negative number or no number is given for the wait time, the wait
+	time used is 15 seconds
 	
+	arguments:
+	 wait -> A number representing the period to shut down the computer after.
+			If a negative number is given, the default 15 seconds is used.
 	
 	synonymns:  shutdown, stopcomputer
 
@@ -219,7 +231,8 @@ wipe(f = "")
 
 """
 
-import file_operations, console_operations, dir_operations
+from . import console_operations, dir_operations, file_operations
+
 import types
 
 _modules = file_operations, console_operations, dir_operations
@@ -227,5 +240,4 @@ _modules = file_operations, console_operations, dir_operations
 vars().update({name: func for mod in _modules for name, func in vars(mod).items()\
 	if type(func) == types.FunctionType and not name.startswith("_")})
 
-del file_operations, types, console_operations, dir_operations
 

@@ -5,19 +5,23 @@ Functions that mainly target files but occasionally also directories or even pro
 import os
 import shutil
 import subprocess
-import shared_content
-from dir_operations import _resolvehint
-from itertools import ifilterfalse
-from itertools import ifilter
+from itertools import filterfalse
 
-class PathIsFileError(IOError):
+try:
+	from .dir_operations import _resolvehint
+	from . import shared_content
+except SystemError:
+	from dir_operations import _resolvehint
+	import shared_content
+
+class PathIsFileError(OSError):
 	"""
 	This exception is raised when an attempt to copy or move a target to
 	a file is made. This is to prevent overwriting and interfering with existing
 	files.
 	"""
 
-class FileLocationError(IOError):
+class FileLocationError(OSError):
 	""""
 	This is raised when a specified location of a file is invalid.
 	"""
@@ -68,7 +72,7 @@ def copy(source, destination):
 			else:
 				shutil.copytree(f, destination)
 		except:
-			print "Copy action unsuccessful for", f
+			print("Copy action unsuccessful for", f)
 
 cp = copy
 
@@ -92,7 +96,7 @@ def move(source, destination):
 		try:
 			shutil.move(f, destination)
 		except:
-			print "Move action unsuccessful for", f
+			print("Move action unsuccessful for", f)
 	
 	
 mv = move
@@ -131,7 +135,7 @@ def delete(filename, force = ""):
 				else:
 					shutil.rmtree(f)
 			except:
-				print "Delete action unsuccessful for", f
+				print("Delete action unsuccessful for", f)
 	
 rm = remove = delete
 
@@ -182,8 +186,11 @@ def wipe(f = ""):
 		shutil.rmtree(f)
 		os.mkdir(f)
 	else:
-		if 'y' in raw_input("Clear console? (y / n) : ").lower():
-			from console_operations import cls
+		if 'y' in input("Clear console? (y / n) : ").lower():
+			try:
+				from .console_operations import cls
+			except SystemError:
+				from console_operations import cls
 			cls()
 
 @shared_content.assert_argument_type(str)
@@ -223,37 +230,37 @@ def find(name):
 		)
 	
 	hit_count = 0
-	print
+	print()
 	
 	for root, dirs, files in os.walk(x or os.path.dirname(os.path.abspath(name))):
-		d = ifilter(func, ifilterfalse(shared_content.is_system_file, dirs))
-		f = ifilter(func, ifilterfalse(shared_content.is_system_file, files))
+		d = filter(func, filterfalse(shared_content.is_system_file, dirs))
+		f = filter(func, filterfalse(shared_content.is_system_file, files))
 		try:
-			print os.path.join(root, next(d))
+			print(os.path.join(root, next(d)))
 			hit_count += 1
 		except StopIteration:
 			try:
-				print os.path.join(root, next(f))
+				print(os.path.join(root, next(f)))
 				hit_count += 1
 			except StopIteration:
 				continue
 			else:
 				for i in f:
-					print os.path.join(root, i)
+					print(os.path.join(root, i))
 					hit_count += 1
 		else:
 			for i in d:
-				print os.path.join(root, i)
+				print(os.path.join(root, i))
 				hit_count += 1
 			for i in f:
-				print os.path.join(root, i)
+				print(os.path.join(root, i))
 				hit_count += 1
 		
-		print
+		print()
 		
 	
-	print "Your search got {count} hit{s}\n".format(count = hit_count,
-					s = "" if hit_count is 1 else "s")
+	print("Your search got {count} hit{s}\n".format(count = hit_count,
+					s = "" if hit_count is 1 else "s"))
 
 search = find
 

@@ -25,9 +25,9 @@ def Windowsonly(f):
 		if platform.startswith("win"):
 			return f(*args, **kwargs)
 		else:
-			print "This operation currently does not work on", platform
-			print "Check the source code in {}.py for more information.".format(
-				os.path.abspath(f.__module__))
+			print("This operation currently does not work on", platform)
+			print("Check the source code in {}.py for more information.".format(
+				os.path.abspath(f.__module__)))
 			
 			return None
 	
@@ -74,7 +74,7 @@ tuple of types.\nProvided", e)
 			_raise("{}  ({})".format(type(_type).__name__, _type))
 		
 	check_type_type(expect)
-	for x in specific.itervalues():
+	for x in specific.values():
 		check_type_type(x)
 	
 	if isinstance(expect, type):
@@ -91,7 +91,7 @@ tuple of types.\nProvided", e)
 									.format(type_failed, type(i).__name__))
 			
 			
-			for name, value in kwargs.iteritems():
+			for name, value in kwargs.items():
 				if name in specific:
 					if not isinstance(value, specific[name]):
 						

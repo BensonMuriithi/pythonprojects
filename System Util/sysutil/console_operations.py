@@ -7,46 +7,29 @@ import subprocess
 import os
 import itertools
 import chardet
-import shared_content
+import io
+import threading
 from contextlib import contextmanager
+from sys import platform, version
+
+if platform.startswith("win"):
+	import msvcrt
+
+try:
+	from . import shared_content
+except SystemError:
+	import shared_content
 
 def cls():
 	"""
 	Wipes all text on the shell but input history and namespace variables
 	are not affected.
 	"""
-	from sys import version, platform
-	
 	os.system("cls")	
-	print
+	print()
 	
-	print "Python {pyversion} on {pyplatf}".format(
-			pyversion = version, pyplatf = platform,
-		)
-	print "Type \"help\", \"copyright\", \"credits\" or \"license\" for more information."
-
-
-def clear(variables, *omit):
-	"""
-	Clears the variables in the dict provided for an object.
-	If 'variables' is an object other than dict, and not built-in, it's __dict__
-	member is used.
-	"""
-	
-	if not isinstance(variables, dict):
-		try:
-			variables = variables.__dict__
-		except AttributeError:
-			raise TypeException(
-			"Object of type {} does not have members or data to clear.".format(
-					variables.__class__))
-	
-	for x in variables.keys():
-		if not x.startswith('__') and x not in omit:
-			del variables[x]
-	
-	if 'y' in raw_input("Clear console? (y / n) >> ").lower():
-		cls()
+	print("Python %s on %s" % (version, platform))
+	print("Type \"help\", \"copyright\", \"credits\" or \"license\" for more information.")
 
 
 @shared_content.assert_argument_type(str)
@@ -78,14 +61,15 @@ def stop(process):
 	synonymns: stop, kill, stopprocess, taskkill
 	"""
 	
-	outputfile = tempfile.TemporaryFile()
+	outputfile = tempfile.TemporaryFile(buffering = 1)
 	
 	process = process.rstrip(".exe")
 	result = subprocess.call("taskkill /f /t /im %s.exe" % process,
 		stdout = outputfile, stderr = outputfile)
 	
 	if result != 0:
-		print "Kill of {}.exe unsuccessful.".format(process)
+		outputfile.seek(0)
+		print(outputfile.read())
 
 kill = stopprocess = taskkill = stop
 
@@ -107,7 +91,7 @@ def tasklist(process = ""):
 	
 	if process:
 		subprocess.call("tasklist /fi \"imagename eq %s.exe\"" % process.rstrip(".exe"))
-		print
+		print()
 		return
 	
 	def iterate_processes():
@@ -115,16 +99,14 @@ def tasklist(process = ""):
 		Generator of lines from the call of tasklist to print.
 		Skips lines whose imagename has already been printed.
 		"""
-		f = tempfile.TemporaryFile(bufsize = 0)
+		f = tempfile.TemporaryFile(mode='r+',buffering=1)
 		subprocess.call("tasklist", bufsize = 0, stdout = f, stderr = f)
+		f.flush()
 		
 		f.seek(0)
-		added_names = set()#I think the below search using the 'in' keyword
-		#will be better on a set than a list.
-			
+		added_names = set()
 		for l in f:
 			exe_location = l.find(".exe")
-			
 			if exe_location != -1:
 				if not l[:exe_location + 1] in added_names:
 					added_names.add(l[:exe_location + 1])
@@ -132,7 +114,7 @@ def tasklist(process = ""):
 			else:
 				yield l
 	
-	print "".join(iterate_processes())
+	print("".join(iterate_processes()))
 
 getprocess = tasklist
 
@@ -152,13 +134,13 @@ def _getfileobject(f):
 	elif os.path.isfile(f):
 		f = open(f)
 	else:
-		raise IOError("Can only read contents of files.")
+		raise OSError("Can only read contents of files.")
 	
 	f.seek(0)
 	yield f
 	f.close()
 
-@shared_content.assert_argument_type((str, file))
+@shared_content.assert_argument_type((str, io.TextIOWrapper, io.StringIO))
 def cat(f):
 	"""
 	Print the contents of a file.
@@ -170,12 +152,12 @@ def cat(f):
 	synonymns: cat, stream
 	"""
 	with _getfileobject(f) as ff:
-		print "".join(ff)
+		print("".join(ff))
 
 stream = cat
 
 @shared_content.Windowsonly
-@shared_content.assert_argument_type((str, file))
+@shared_content.assert_argument_type((str, io.TextIOWrapper, io.StringIO))
 def more(f):
 	"""
 	Print the contents of a file 10 lines at a time.
@@ -184,9 +166,6 @@ def more(f):
 	
 	f: File or name of file to read.   (Required)
 	"""
-	
-	import msvcrt#reason for Windows only. Posix equivalent of current
-	#get_morecharater will be included
 	
 	def get_morecharater():
 		while not msvcrt.kbhit():
@@ -206,51 +185,106 @@ def more(f):
 		xfr.seek(0)
 		try:
 			while 1:
-				print "".join(itertools.islice(xfr, 0, step))
+				print("".join(itertools.islice(xfr, 0, step)))
 				lines -= step
 				
 				if lines > 0:
-					print "-- More -- ({}%)".format(
+					print("-- More -- ({}%)".format(
 						int(round((float(num_of_lines - lines) / num_of_lines) * 100))),
+						end=' ')
 					
-					if get_morecharater() not in (' ', '\r'):
-						to_step = 2
-					else:
+					if get_morecharater() in (' ', '\r'):
 						to_step = 25
+					else:
+						to_step = 2
 					
 					after_more = next(xfr)
-					print "\r{}{}".format(after_more.rstrip("\n"),
-							" "*(more_string_length -len(after_more) + 1))
+					print("\r{}{}".format(after_more.rstrip("\n"),
+							" "*(more_string_length -len(after_more) + 1)))
 					lines -= 1
 				else:
 					break
 				step = to_step
 		except KeyboardInterrupt:
-			print "\r^C" + " " * (more_string_length-2)
+			print("\r^C" + " " * (more_string_length-2))
 
+
+def _shutdown_restart_abort(_wait, actionname):
+	from time import sleep
+	def countdown(action, evnt_object):
+		for i in range(_wait - 2, -1, -1):
+			if not evnt_object.is_set():
+				print("\r{} in {:^3} seconds. Press ESC or CTRL-C to abort".format(
+							action, i), end = "")
+				sleep(1)
+			else:
+				break
+	
+	event = threading.Event()
+	abort_thread = threading.Thread(target = countdown,
+			name = "sysutil %s abort thread" % actionname.lower(),
+			args = (actionname, event),
+			daemon = True)
+	
+	abort_thread.start()
+	
+	try:
+		while abort_thread.is_alive():
+			if msvcrt.kbhit() and ord(msvcrt.getch()) is 27:
+				raise KeyboardInterrupt
+	except KeyboardInterrupt:
+		event.set()
+		print()
+		return 1
+	
+	return 0
 
 @shared_content.Windowsonly
-def shutdown():
+def shutdown(_wait = -1):
 	"""
-	Shuts down the local computer.
+	Shuts down the local computer after a given time in seconds.
+	If a positive number is provided as an argument, a timer is
+	set for the computer to shutdown and the user is provided with a
+	countdown to abort the operation.
+	If a negative number or no number is given for the wait time, the wait
+	time used is 15 seconds
 	
+	arguments:
+	 wait -> A number representing the period to shut down the computer after.
+			If a negative number is given, the default 15 seconds is used.
 	
 	synonymns:  shutdown, stopcomputer
 	"""
+	if not _shutdown_restart_abort(_wait > -1 and _wait+1 or 16, "Shutting down"):
+		subprocess.call("shutdown /p")
+		return
 	
-	subprocess.call("shutdown /p")
-
+	print("Shutdown aborted.")
+	
 stopcomputer = shutdown
 
 @shared_content.Windowsonly
-def restartcomputer():
+def restartcomputer(_wait = -1):
 	"""
-	Completely shuts down the computer then restarts it.
+	Restarts the local computer after a given time in seconds.
+	
+	If a positive number is provided as an argument, a timer is
+	set for the computer to restart and the user is provided with a
+	countdown to abort the operation.
+	If a negative number or no number is given for the wait time, the wait
+	time used is 15 seconds
+	
+	arguments:
+	 wait -> A number representing the period to restart the computer after.
+			If a negative number is given, the default 15 seconds is used.
 	
 	synonymns: restartcomputer, restart
 	"""
-	subprocess.call("shutdown /r -t 00")
-
+	if not _shutdown_restart_abort(_wait > -1 and _wait + 1 or 16, "Restarting"):
+		subprocess.call("shutdown /r /t 00")
+		return
+	
+	print("Restart aborted.")
 
 restart = restartcomputer
 
@@ -264,9 +298,9 @@ def getdrives():
 	synonymns: getdrives, psdrive
 	"""
 	
-	namefile = tempfile.TemporaryFile(bufsize = 0)
-	volumenamefile = tempfile.TemporaryFile(bufsize = 0)
-	freespacefile = tempfile.TemporaryFile(bufsize = 0)
+	namefile = tempfile.TemporaryFile(buffering = 1)
+	volumenamefile = tempfile.TemporaryFile(buffering = 1)
+	freespacefile = tempfile.TemporaryFile(buffering = 1)
 	
 	#Store the result of each detail for later formatting.
 	subprocess.call("wmic logicaldisk get name", stdout = namefile)
@@ -280,30 +314,42 @@ def getdrives():
 	format_template = "\t{0}\t\t\t   {1}\t\t  {2}"
 	#result of trial and error for best fit .join() isn't flexible enough
 	
-	print format_template.format(*(shared_content.format_cmdoutput(f.readline())\
-						for f in result_files))
+	print(format_template.format(*(shared_content.format_cmdoutput(f.readline())\
+						for f in result_files)))
 	
-	print "  {0}\t\t{1}\t\t{2}".format(*itertools.repeat("-"*15, len(result_files)))
+	print("  {0}\t\t{1}\t\t{2}".format(*itertools.repeat("-"*15, len(result_files))))
 	
-	for i in itertools.izip(*result_files):
+	for i in zip(*result_files):
 		name, vol_name, space = (shared_content.format_cmdoutput(s) for s in i)
 		if name:
-			print format_template.format(name,
+			print(format_template.format(name,
 				vol_name or ("(CD-ROM)" if name in shared_content.cddrives()\
 							else "Unavailable"),
 				space and str(round((float(space) / 10 ** 9), 1)) + " GB"\
-					or "Unavailable")
+					or "Unavailable"))
 
 psdrive = getdrives
 
 @shared_content.Windowsonly
 @shared_content.assert_argument_type(str)
-def eject(drive):
+def eject(drive = ""):
 	"""
-	Eject the cd tray whose path is the one specified.
+	Eject the cd tray of a drive specified.
+	If no drive is specified, it is checked if there is exactly one drive with
+	a cd tray connected to the computer and if so that cd tray is ejected.
 	
-	The function currently only works on Windows.
+	The function currently relies on an executable and only works on Windows.
 	"""
+	
+	if not drive:
+		if len(shared_content.cddrives()) is 1:
+			drive = shared_content.cddrives()
+		else:
+			print("This computer does not connected to a cd tray.")
+			return
+	elif not drive in shared_content.cddrives():
+		print("{} is not a drive with a cd tray.".format(drive))
+		return
 	
 	subprocess.call([shared_content.eject, drive])
 

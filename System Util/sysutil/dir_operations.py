@@ -4,7 +4,12 @@ Functions that are mainly targeted at working directories.
 
 import os
 import itertools
-import shared_content
+
+try:
+	from . import shared_content
+except SystemError:
+	import shared_content
+
 
 class InvalidPathError(RuntimeError):
 	"""
@@ -102,7 +107,10 @@ def _resolve_cdpath(pth):
 			if len(resolvedpth) <= 3 and os.name=="nt" and \
 					resolvedpth.rstrip("\\") in shared_content.cddrives():
 				
-				from console_operations import eject
+				try:
+					from .console_operations import eject
+				except SystemError:
+					from console_operations import eject
 				eject(resolvedpth)
 				return None
 			
@@ -118,7 +126,7 @@ def cwd():
 	Prints the current working directory.
 	"""
 	
-	print os.getcwd()
+	print(os.getcwd())
 
 @shared_content.assert_argument_type(str)
 def cd(pth = ""):
@@ -172,22 +180,22 @@ def ls(pth = ""):
 			raise InvalidPathError("The directory {} does not exist.".format(_dir))
 		contents = 0
 	
-	print "\n%s\n" % _dir
+	print("\n%s\n" % _dir)
 	
 	files = []
-	for i in itertools.ifilterfalse(shared_content.is_system_file,
+	for i in itertools.filterfalse(shared_content.is_system_file,
 					sorted(contents or os.listdir(_dir),
 							key = lambda name: name.lower())):
 		
 		if os.path.isdir(os.path.join(pth, i)):
-			print i
+			print(i)
 		else:
 			files.append(i)
 	
 	if files:
-		print "\n".join(files)
+		print("\n".join(files))
 	
-	print
+	print()
 
 dir = ls
 
@@ -231,16 +239,16 @@ def lsr(pth = ""):
 		func = lambda i: True
 	
 	for root, dirs, files in os.walk(_dir):
-		d = filter(func,\
-				itertools.ifilterfalse(shared_content.is_system_file, dirs))
-		f = filter(func,\
-				itertools.ifilterfalse(shared_content.is_system_file, files))
+		d = list(filter(func,\
+				itertools.filterfalse(shared_content.is_system_file, dirs)))
+		f = list(filter(func,\
+				itertools.filterfalse(shared_content.is_system_file, files)))
 		
 		if f or d:
-			print "\n%s\n" % root
-			print "\t" + "\n\t".join(d + f)
+			print("\n%s\n" % root)
+			print("\t" + "\n\t".join(d + f))
 	
-	print
+	print()
 
 
 dir_r = lsr
@@ -251,7 +259,7 @@ def mkdir(name):
 	Creates a new directory of the specified path.
 	"""
 	os.mkdir(name)
-	print "Directory {} created.".format(os.path.abspath(name))
+	print("Directory {} created.".format(os.path.abspath(name)))
 
 class PushPopD(object):
 	"""
@@ -283,7 +291,7 @@ def popd():
 		os.chdir(PushPopD.get_pop_path())
 		cwd()
 	except AttributeError:
-		print "Popd unavailable."
+		print("Popd unavailable.")
 
 @shared_content.assert_argument_type(str)
 def pushd(pth):

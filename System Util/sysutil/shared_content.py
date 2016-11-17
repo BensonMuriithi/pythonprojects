@@ -127,11 +127,12 @@ def cddrives():
 	"""
 	global _cddrives
 	if _cddrives is None:
-		f = tempfile.TemporaryFile(bufsize = 0)
-		subprocess.call("wmic cdrom get drive", stdout = f, bufsize = 0)
+		f = tempfile.TemporaryFile(buffering = 1)
+		subprocess.call("wmic cdrom get drive", stdout = f)
+		f.flush()
 		f.seek(0)
-		next(f)
-		_cddrives = tuple(takewhile(lambda x: x, (format_cmdoutput(drive) for drive in f)))
+		f.readline()
+		_cddrives = tuple(takewhile(lambda x: x, (format_cmdoutput(drive) for drive in f.readlines())))
 	
 	return _cddrives
 

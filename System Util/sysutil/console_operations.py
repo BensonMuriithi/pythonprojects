@@ -90,7 +90,8 @@ def tasklist(process = ""):
 	"""
 	
 	if process:
-		subprocess.call("tasklist /fi \"imagename eq %s.exe\"" % process.rstrip(".exe"))
+		subprocess.call("tasklist /fi \"imagename eq {}.exe\"".format(
+				process.replace(".exe", "")))
 		print()
 		return
 	
@@ -100,7 +101,7 @@ def tasklist(process = ""):
 		Skips lines whose imagename has already been printed.
 		"""
 		f = tempfile.TemporaryFile(mode='r+',buffering=1)
-		subprocess.call("tasklist", bufsize = 0, stdout = f, stderr = f)
+		subprocess.call("tasklist", stdout = f, stderr = f)
 		f.flush()
 		
 		f.seek(0)
@@ -128,7 +129,7 @@ def _getfileobject(f):
 	an IOError
 	"""
 	
-	if isinstance(f, file):
+	if isinstance(f, (io.TextIOWrapper, io.StringIO, tempfile._TemporaryFileWrapper)):
 		if f.closed:
 			f = open(f.name)
 	elif os.path.isfile(f):
@@ -140,7 +141,8 @@ def _getfileobject(f):
 	yield f
 	f.close()
 
-@shared_content.assert_argument_type((str, io.TextIOWrapper, io.StringIO))
+@shared_content.assert_argument_type((str, io.TextIOWrapper, io.StringIO,
+tempfile._TemporaryFileWrapper))
 def cat(f):
 	"""
 	Print the contents of a file.
@@ -157,7 +159,8 @@ def cat(f):
 stream = cat
 
 @shared_content.Windowsonly
-@shared_content.assert_argument_type((str, io.TextIOWrapper, io.StringIO))
+@shared_content.assert_argument_type((str, io.TextIOWrapper, io.StringIO,
+tempfile._TemporaryFileWrapper))
 def more(f):
 	"""
 	Print the contents of a file 10 lines at a time.
@@ -347,7 +350,7 @@ def eject(drive = ""):
 		else:
 			print("This computer does not connected to a cd tray.")
 			return
-	elif not drive in shared_content.cddrives():
+	elif not drive.replace("/", "\\").strip("\\") in shared_content.cddrives():
 		print("{} is not a drive with a cd tray.".format(drive))
 		return
 	

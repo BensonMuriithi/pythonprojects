@@ -126,7 +126,7 @@ def delete(filename, force = ""):
 	"""
 	
 	if force != "f":
-		subprocess.call([shared_content.recycle, filename])
+		subprocess.Popen([shared_content.recycle, filename])
 	else:
 		for f in _getfiles(filename):
 			try:
@@ -217,8 +217,8 @@ def find(name):
 	
 	name = name.lower()
 	
-	if "*" not in name:
-		func = lambda x: name in x.lower()
+	if "*" not in name or (name.startswith("*") and name.endswith("*")):
+		func = lambda x: name.strip("*") in x.lower()
 	elif name.startswith("*"):
 		func = lambda x: x.lower().endswith(name[1:])
 	elif name.endswith("*"):

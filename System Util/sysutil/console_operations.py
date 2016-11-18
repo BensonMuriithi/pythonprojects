@@ -2,15 +2,16 @@
 Functions that target the shell.
 """
 
-import tempfile
 import subprocess
 import os
 import itertools
 import chardet
 import io
 import threading
+
 from contextlib import contextmanager
-from sys import platform, version
+from sys import platform, version, stdout
+from tempfile import _TemporaryFileWrapper as TemporaryFileWrapper
 
 if platform.startswith("win"):
 	import msvcrt
@@ -61,15 +62,8 @@ def stop(process):
 	synonymns: stop, kill, stopprocess, taskkill
 	"""
 	
-	outputfile = tempfile.TemporaryFile(buffering = 1)
+	subprocess.call("taskkill /f /t /im %s.exe" % process.replace(".exe", ""))
 	
-	process = process.rstrip(".exe")
-	result = subprocess.call("taskkill /f /t /im %s.exe" % process,
-		stdout = outputfile, stderr = outputfile)
-	
-	if result != 0:
-		outputfile.seek(0)
-		print(outputfile.read())
 
 kill = stopprocess = taskkill = stop
 
@@ -100,13 +94,9 @@ def tasklist(process = ""):
 		Generator of lines from the call of tasklist to print.
 		Skips lines whose imagename has already been printed.
 		"""
-		f = tempfile.TemporaryFile(mode='r+',buffering=1)
-		subprocess.call("tasklist", stdout = f, stderr = f)
-		f.flush()
-		
-		f.seek(0)
 		added_names = set()
-		for l in f:
+		
+		for l in io.StringIO(subprocess.check_output("tasklist").decode()):
 			exe_location = l.find(".exe")
 			if exe_location != -1:
 				if not l[:exe_location + 1] in added_names:
@@ -129,20 +119,22 @@ def _getfileobject(f):
 	an IOError
 	"""
 	
-	if isinstance(f, (io.TextIOWrapper, io.StringIO, tempfile._TemporaryFileWrapper)):
+	if isinstance(f, str):
+		if not os.path.isfile(f):
+			raise OSError("%s is not a readable file" % f)
+		f = open(f)
+	elif isinstance(f, (io.IOBase, TemporaryFileWrapper)):
 		if f.closed:
 			f = open(f.name)
-	elif os.path.isfile(f):
-		f = open(f)
-	else:
-		raise OSError("Can only read contents of files.")
+		elif not f.readable():
+			raise OSError("File provided is not opened for reading")
+		f.seek(0)
 	
-	f.seek(0)
 	yield f
+	
 	f.close()
+	
 
-@shared_content.assert_argument_type((str, io.TextIOWrapper, io.StringIO,
-tempfile._TemporaryFileWrapper))
 def cat(f):
 	"""
 	Print the contents of a file.
@@ -158,59 +150,50 @@ def cat(f):
 
 stream = cat
 
-@shared_content.Windowsonly
-@shared_content.assert_argument_type((str, io.TextIOWrapper, io.StringIO,
-tempfile._TemporaryFileWrapper))
 def more(f):
 	"""
 	Print the contents of a file 10 lines at a time.
 	
 	arguments:
-	
 	f: File or name of file to read.   (Required)
 	"""
 	
-	def get_morecharater():
-		while not msvcrt.kbhit():
-			pass
+	with _getfileobject(f) as file:
+		terminal_height = os.get_terminal_size().lines - 4
+		step = terminal_height > 0 and terminal_height or os.get_terminal_size().lines
+		terminal_height = step
+		more_string_length = len("-- More -- (00%)")
+		no_lines = 0
 		
-		return msvcrt.getch()
-	
-	with _getfileobject(f) as xfr:
-		step = 40
+		for l in file: no_lines+=1
 		
-		lines = 0
-		for l in xfr:
-			lines += 1
+		file.seek(0)
+		linecounter = 0
 		
-		num_of_lines = lines
-		more_string_length = len("-- More -- ({}%)")
-		xfr.seek(0)
-		try:
-			while 1:
-				print("".join(itertools.islice(xfr, 0, step)))
-				lines -= step
-				
-				if lines > 0:
-					print("-- More -- ({}%)".format(
-						int(round((float(num_of_lines - lines) / num_of_lines) * 100))),
-						end=' ')
-					
-					if get_morecharater() in (' ', '\r'):
-						to_step = 25
-					else:
-						to_step = 2
-					
-					after_more = next(xfr)
-					print("\r{}{}".format(after_more.rstrip("\n"),
-							" "*(more_string_length -len(after_more) + 1)))
-					lines -= 1
-				else:
-					break
-				step = to_step
-		except KeyboardInterrupt:
-			print("\r^C" + " " * (more_string_length-2))
-
+		while 1:
+			print("".join(itertools.islice(file, 0, step)))
+			linecounter += step
+			if no_lines - linecounter < 1:
+				break
+			
+			print("-- More -- ({:2}%)".format(
+			int(round((float(linecounter) / no_lines) * 100))),
+			end = "")
+			
+			stdout.flush()
+			keypress = ord(msvcrt.getch())
+			if keypress is 3:
+				print()
+				break
+			step = keypress in (32, 13) and terminal_height\
+								or terminal_height >> 2 or step
+			
+			followmore = file.readline().rstrip("\n")
+			print("\r{}{}".format(
+			followmore, " " * (more_string_length - len(followmore))
+			))
+			
+			linecounter += 1
 
 def _shutdown_restart_abort(_wait, actionname):
 	from time import sleep
@@ -301,35 +284,26 @@ def getdrives():
 	synonymns: getdrives, psdrive
 	"""
 	
-	namefile = tempfile.TemporaryFile(buffering = 1)
-	volumenamefile = tempfile.TemporaryFile(buffering = 1)
-	freespacefile = tempfile.TemporaryFile(buffering = 1)
-	
-	#Store the result of each detail for later formatting.
-	subprocess.call("wmic logicaldisk get name", stdout = namefile)
-	subprocess.call("wmic logicaldisk get volumename", stdout = volumenamefile)
-	subprocess.call("wmic logicaldisk get freespace", stdout = freespacefile)
-	
-	result_files = (namefile, volumenamefile, freespacefile)#no performance hit
-	for f in result_files:
-		f.seek(0)
+	results = [
+	io.StringIO(subprocess.check_output("wmic logicaldisk get %s" % s).decode())\
+	for s in ("name", "volumename", "freespace")]
 	
 	format_template = "\t{0}\t\t\t   {1}\t\t  {2}"
-	#result of trial and error for best fit .join() isn't flexible enough
 	
-	print(format_template.format(*(shared_content.format_cmdoutput(f.readline())\
-						for f in result_files)))
+	print(format_template.format(*(next(f).strip() for f in results)))
 	
-	print("  {0}\t\t{1}\t\t{2}".format(*itertools.repeat("-"*15, len(result_files))))
+	print("  {0}\t\t{1}\t\t{2}".format(*itertools.repeat("-"*15, 3)))
 	
-	for i in zip(*result_files):
-		name, vol_name, space = (shared_content.format_cmdoutput(s) for s in i)
+	space_str = lambda s: str(round(float(s) / 10**9, 1)) + " GB"
+	strip_strs = lambda three: (s.strip() for s in three)
+	
+	for name, vol_name, space in (strip_strs(t) for t in zip(*results)):
 		if name:
-			print(format_template.format(name,
-				vol_name or ("(CD-ROM)" if name in shared_content.cddrives()\
-							else "Unavailable"),
-				space and str(round((float(space) / 10 ** 9), 1)) + " GB"\
-					or "Unavailable"))
+			print(format_template.format(
+			name,
+			vol_name or (name in shared_content.cddrives() and "(CD-ROM)" or "Unavailable"),
+			space and space_str(space) or "Unavailable"))
+	
 
 psdrive = getdrives
 

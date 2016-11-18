@@ -6,7 +6,7 @@ import os
 from sys import platform
 import chardet
 import subprocess
-import tempfile
+import io
 from itertools import takewhile
 
 #paths to executables recycle and eject
@@ -111,28 +111,15 @@ tuple of types.\nProvided", e)
 		return arg_type_deco
 	return true_asserter
 
-def format_cmdoutput(s):#Output of wmic is encoded in utf-16_le
-	"""
-	Decode the output of cmd when required into unicode.
-	
-	Requires the chardet package installed. (pip install chardet)
-	"""
-	encoding = chardet.detect(s)#pypi package to detect encoding
-	return s.decode(encoding["encoding"], 'ignore')[1:].replace("\x00", "").rstrip()
-
-#Works only on Windows as is
 def cddrives():
 	"""
 	Gets the drives that are cd-roms using the wmic command on cmd
 	"""
 	global _cddrives
 	if _cddrives is None:
-		f = tempfile.TemporaryFile(buffering = 1)
-		subprocess.call("wmic cdrom get drive", stdout = f)
-		f.flush()
-		f.seek(0)
-		f.readline()
-		_cddrives = tuple(takewhile(lambda x: x, (format_cmdoutput(drive) for drive in f.readlines())))
+		_cddrives = {i for i in io.StringIO(\
+			subprocess.check_output("wmic cdrom get drive").decode().strip())\
+			if ":" in i}
 	
 	return _cddrives
 

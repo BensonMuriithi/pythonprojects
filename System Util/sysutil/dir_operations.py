@@ -3,123 +3,14 @@ Functions that are mainly targeted at working directories.
 """
 
 import os
-import itertools
+
+from time import localtime, strftime
 
 try:
-	from . import shared_content
+	from . import shared_operations
 except SystemError:
-	import shared_content
+	import shared_operations
 
-
-class InvalidPathError(RuntimeError):
-	"""
-	Raised when the path specified cannot be resolved.
-	"""
-
-class InterimError(Exception):
-	"""
-	This is an interim error ad is always meant to be caught.
-	A custom class is created so as to not use built-in errors and catch them
-	as they could actually be raised especially after later modification.
-	"""
-
-
-STARTHINT, CONTAINHINT, ENDHINT = 0, 1, 2
-#constants specifying how name name matching of files should be assessed.
-
-def _resolvefromdirlist(pth, hint, hintpos):
-	"""
-	Resolves the names in the directory pth that match with hint as per the
-	hint criteria ie whether STARTHINT, ENDHINT or CONTAINHINT
-	
-	The function is a generator for the names in the directory that match the hint.
-	"""
-	
-	
-	#Sacrifice succintness of a single for loop for a single comparison of hintpos
-	#For loops for STARTHINT and ENDHINT can also be one function
-	#with an argument to accept str.startswith or str.endswith but would be
-	#less comprehensible.
-	
-	hint = hint.lower()
-	try:
-		if hintpos == STARTHINT:
-			for f in os.listdir(pth):
-				if f.lower().startswith(hint):
-					yield f
-		elif hintpos == CONTAINHINT:
-			for f in os.listdir(pth):
-				if f.lower().find(hint) != -1:
-					yield f
-		elif hintpos == ENDHINT:
-			for f in os.listdir(pth):
-				if f.lower().endswith(hint):
-					yield f
-	except WindowsError:
-		yield
-	
-
-def _resolvehint(pth, hint):
-	"""
-	Working of _resolvehint:
-	
-	hint is checked to be a wildcard.If it is, _resolvefromdirlist is called 
-	with the hintpos parameter corresponding with the location of the
-	wildcard.
-	The resultant generator is then returned by this function.
-	"""
-	
-	asterisk_atstart = hint[0] == "*"
-	asterisk_atend = hint[-1] == "*"
-	if asterisk_atend and not asterisk_atstart:#final character
-		return _resolvefromdirlist(pth, hint[:-1], STARTHINT)
-	elif asterisk_atstart and not asterisk_atend:
-		return _resolvefromdirlist(pth, hint[1:], ENDHINT)
-	elif asterisk_atstart and asterisk_atend:
-		return _resolvefromdirlist(pth, hint[1:-1], CONTAINHINT)
-	else:
-		raise RuntimeError("{}\nWildcard positioned within other characters. {}".format(
-					hint, "Asterisk can only be positioned at start or end : non-exclusive"))
-
-
-def _resolve_cdpath(pth):
-	"""
-	Resolves a path only for purposes of changing directory.
-	The provided path can contain wildcards but must be valid ie,
-	the result of the resolve must be the path to a directory.
-	"""
-	
-	separator = os.name == "nt" and "\\" or "/"
-	resolvedpth = ""
-	try:
-		for piece in os.path.abspath(pth).split(separator):
-			if "*" not in piece:
-				resolvedpth += piece + separator
-			else:
-				resolved_iter = list(_resolvehint(resolvedpth, piece))
-				if len(resolved_iter) != 1:
-					raise InterimError
-				resolvedpth += resolved_iter[0] + separator
-			
-			if os.path.isdir(resolvedpth):
-				continue
-			
-			if len(resolvedpth) <= 3 and os.name=="nt" and \
-					resolvedpth.rstrip("\\") in shared_content.cddrives():
-				
-				try:
-					from .console_operations import eject
-				except SystemError:
-					from console_operations import eject
-				eject(resolvedpth)
-				return None
-			
-			raise InterimError
-	
-	except InterimError:
-		raise InvalidPathError("{} is not a valid path.".format(pth))
-	
-	return resolvedpth
 
 def cwd():
 	"""
@@ -128,7 +19,24 @@ def cwd():
 	
 	print(os.getcwd())
 
-@shared_content.assert_argument_type(str)
+def _evaluatepath(p):
+	results = [s for s in shared_operations.resolve_path(p) if os.path.isdir(s)]
+	if len(results) is 1:
+		return results[0]
+	elif not results and len(p) <= 3 and p.replace("/", "\\").rstrip("\\") \
+		in shared_operations.cddrives():
+		
+		try:
+			from .console_operations import eject
+		except SystemError:
+			from console_operations import eject
+		
+		eject(p)
+		return
+	
+	raise OSError("\n{} does not resolve to a directory.".format(p))
+
+@shared_operations.assert_argument_type(str)
 def cd(pth = ""):
 	"""
 	If a path to a directory is specified, it moves the cwd to that directory.
@@ -138,20 +46,12 @@ def cd(pth = ""):
 	synonymns: cd, chdir
 	"""
 	
-	if pth == "..":
-		os.chdir("..")
-	elif pth != "":
-		resolvedpth = _resolve_cdpath(pth)
-		if resolvedpth:
-			os.chdir(resolvedpth)
-		else: return
-	
+	os.chdir(pth and _evaluatepath(pth) or os.curdir)
 	cwd()
 
 chdir = cd
 
-
-@shared_content.assert_argument_type(str)
+@shared_operations.assert_argument_type(str)
 def ls(pth = ""):
 	"""
 	Prints the contents of the specified directory
@@ -168,38 +68,36 @@ def ls(pth = ""):
 	
 	synonymns: ls, dir
 	"""
+	r = os.path.dirname(pth)
 	
-	if "*" in pth:
-		_dir, p = os.path.split(os.path.abspath(pth))
-		if not os.path.isdir(_dir):
-			raise InvalidPathError("The directory {} does not exist.".format(_dir))
-		contents = _resolvehint(_dir, p)
+	if r and not os.path.isdir(r):
+		raise OSError("\n%s is not a directory" % r)
+	
+	if "*" in os.path.basename(pth):
+		directory = shared_operations.resolve_path(pth)
+		pth = r
 	else:
-		_dir = pth or os.getcwd()
-		if not os.path.isdir(_dir):
-			raise InvalidPathError("The directory {} does not exist.".format(_dir))
-		contents = 0
+		directory = (os.path.join(pth, s) for s in os.listdir(
+						pth and _evaluatepath(pth) or os.curdir))
 	
-	print("\n%s\n" % _dir)
+	print("\nDirectory:",os.path.abspath(pth or os.curdir) + "\n")
 	
-	files = []
-	for i in itertools.filterfalse(shared_content.is_system_file,
-					sorted(contents or os.listdir(_dir),
-							key = lambda name: name.lower())):
+	for f, st in filter(None, 
+			(shared_operations.stat_accessible(s) for s in directory)):
 		
-		if os.path.isdir(os.path.join(pth, i)):
-			print(i)
-		else:
-			files.append(i)
-	
-	if files:
-		print("\n".join(files))
+		print("{mod_time}\t{dir_tag:^5}\t{size_if_file:>6}\t{name}".format(
+		mod_time = strftime("%c", localtime(st.st_mtime)),
+		dir_tag = os.path.isdir(f) and "DIR" or "FILE",
+		size_if_file = os.path.isfile(f) and st.st_size or "",
+		name = os.path.basename(f)
+		))
 	
 	print()
-
+	
+	return
 dir = ls
 
-@shared_content.assert_argument_type(str)
+@shared_operations.assert_argument_type(str)
 def lsr(pth = ""):
 	"""
 	Map the contents of a directory. If no path is provided, the current working
@@ -217,54 +115,49 @@ def lsr(pth = ""):
 	synonymns: lsr, dir_r
 	"""
 	
-	if "*" in pth:
-		_dir, hint = os.path.split(os.path.abspath(pth))
-	else:
-		_dir, hint = pth or os.getcwd(), ""
-	
-	if not os.path.isdir(_dir):
-		raise InvalidPathError("{} is not an existing directory".format(_dir))
-	
-	if hint:
-		if hint.startswith("*") and hint.endswith("*"):
-			func = lambda i: hint[1:-1] in i
-		elif hint.startswith("*"):
-			func = lambda x: x.lower().endswith(hint[1:])
-		elif hint.endswith("*"):
-			func = lambda x: x.lower().startswith(hint[:-1])
-		else:
-			raise ValueError("Wildcard cannot be within a name. {}".format(
-				"it should be at the start or end. ", hint))
-	else:
-		func = lambda i: True
-	
-	for root, dirs, files in os.walk(_dir):
-		d = list(filter(func,\
-				itertools.filterfalse(shared_content.is_system_file, dirs)))
-		f = list(filter(func,\
-				itertools.filterfalse(shared_content.is_system_file, files)))
+	if "*" in os.path.dirname(pth):
+		raise OSError("\n%s is not a directory" % os.dirname(pth))
+	elif "*" in os.path.basename(pth) or (pth and not os.path.isdir(pth)):
+		try:
+			from .file_operations import find
+		except SystemError:
+			from file_operations import find
 		
-		if f or d:
-			print("\n%s\n" % root)
-			print("\t" + "\n\t".join(d + f))
+		find(pth, 0)
+		
+		return
 	
+	for root, dirs, files in os.walk(pth or os.getcwd()):
+		if dirs or files:
+			print("\n%s\n" % root)
+			
+			for f, st in filter(None, 
+				(shared_operations.stat_accessible(os.path.join(root, s)) for s in dirs + files)):
+									
+				print("\t{mod}\t{dtag:^5}\t{file_size:>6}\t{name}".format(
+					mod = strftime("%c", localtime(st.st_mtime)),
+					dtag = os.path.isdir(f) and "DIR" or "FILE",
+					file_size = os.path.isfile(f) and st.st_size or "",
+					name = os.path.basename(f)))
+			
 	print()
 
 
 dir_r = lsr
 
-@shared_content.assert_argument_type(str)
+@shared_operations.assert_argument_type(str)
 def mkdir(name):
 	"""
 	Creates a new directory of the specified path.
 	"""
-	os.mkdir(name)
+	os.makedirs(name)
 	print("Directory {} created.".format(os.path.abspath(name)))
 
 class PushPopD(object):
 	"""
 	Store the addresses for pushd and popd functions
 	"""
+	from itertools import cycle
 	@classmethod
 	def set_push_path(cls, pushpath):
 		if pushpath.replace("/", "\\").rstrip("\\") == os.getcwd().rstrip("\\"):
@@ -273,7 +166,7 @@ class PushPopD(object):
 				return
 			except AttributeError:
 				pass
-		cls.paths = itertools.cycle((os.getcwd(), pushpath))
+		cls.paths = cls.cycle((os.getcwd(), pushpath))
 		next(cls.paths)
 	
 	@classmethod
@@ -293,7 +186,7 @@ def popd():
 	except AttributeError:
 		print("Popd unavailable.")
 
-@shared_content.assert_argument_type(str)
+@shared_operations.assert_argument_type(str)
 def pushd(pth):
 	"""
 	Changes the current working directory to one provided and saves
@@ -301,7 +194,7 @@ def pushd(pth):
 	
 	A global variable is preferred so it can be shared by both pushd and popd.
 	"""
-	path = _resolve_cdpath(pth)
+	path = _evaluatepath(pth)
 	if path:
 		PushPopD.set_push_path(path)
 		popd()

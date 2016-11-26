@@ -2,30 +2,24 @@
 Functions that target the shell.
 """
 
-import subprocess
 import os
-import itertools
-import chardet
-import io
-import threading
 
+from io import StringIO
 from contextlib import contextmanager
-from sys import platform, version, stdout
-from tempfile import _TemporaryFileWrapper as TemporaryFileWrapper
-
-if platform.startswith("win"):
-	import msvcrt
+from subprocess import call as sub_call, check_output as sub_check_output
 
 try:
-	from . import shared_content
+	from . import shared_operations
 except SystemError:
-	import shared_content
+	import shared_operations
 
 def cls():
 	"""
 	Wipes all text on the shell but input history and namespace variables
 	are not affected.
 	"""
+	from sys import platform, version
+	
 	os.system("cls")	
 	print()
 	
@@ -33,7 +27,7 @@ def cls():
 	print("Type \"help\", \"copyright\", \"credits\" or \"license\" for more information.")
 
 
-@shared_content.assert_argument_type(str)
+@shared_operations.assert_argument_type(str)
 def start(f):
 	"""
 	Starts a specified file using the default set for that type of file
@@ -48,8 +42,8 @@ def start(f):
 	
 	os.startfile(f)
 
-@shared_content.Windowsonly
-@shared_content.assert_argument_type(str)
+@shared_operations.Windowsonly
+@shared_operations.assert_argument_type(str)
 def stop(process):
 	""" 
 	Forcefully kill a process and all its child processes.
@@ -62,13 +56,13 @@ def stop(process):
 	synonymns: stop, kill, stopprocess, taskkill
 	"""
 	
-	subprocess.call("taskkill /f /t /im %s.exe" % process.replace(".exe", ""))
+	sub_call("taskkill /f /t /im %s.exe" % process.replace(".exe", ""))
 	
 
 kill = stopprocess = taskkill = stop
 
-@shared_content.Windowsonly
-@shared_content.assert_argument_type(str)
+@shared_operations.Windowsonly
+@shared_operations.assert_argument_type(str)
 def tasklist(process = ""):
 	"""
 	Get the list of running processes. 
@@ -84,7 +78,7 @@ def tasklist(process = ""):
 	"""
 	
 	if process:
-		subprocess.call("tasklist /fi \"imagename eq {}.exe\"".format(
+		sub_call("tasklist /fi \"imagename eq {}.exe\"".format(
 				process.replace(".exe", "")))
 		print()
 		return
@@ -96,7 +90,7 @@ def tasklist(process = ""):
 		"""
 		added_names = set()
 		
-		for l in io.StringIO(subprocess.check_output("tasklist").decode()):
+		for l in StringIO(sub_check_output("tasklist").decode()):
 			exe_location = l.find(".exe")
 			if exe_location != -1:
 				if not l[:exe_location + 1] in added_names:
@@ -116,17 +110,17 @@ def _getfileobject(f):
 	Gets a file object from the argument passed to cat or more and seeks to 
 	the start before giving it to the funtion it is helping.
 	If a file object can not be attained from the provided argument, it raises
-	an IOError
+	an OSError
 	"""
 	
 	if isinstance(f, str):
 		if not os.path.isfile(f):
 			raise OSError("%s is not a readable file" % f)
 		f = open(f)
-	elif isinstance(f, (io.IOBase, TemporaryFileWrapper)):
+	elif hasattr(f, "readable"):
 		if f.closed:
 			f = open(f.name)
-		elif not f.readable():
+		if not f.readable():
 			raise OSError("File provided is not opened for reading")
 		f.seek(0)
 	
@@ -170,8 +164,12 @@ def more(f):
 		file.seek(0)
 		linecounter = 0
 		
+		from itertools import islice
+		from msvcrt import getch
+		from sys import stdout
+		
 		while 1:
-			print("".join(itertools.islice(file, 0, step)))
+			print("".join(islice(file, 0, step)))
 			linecounter += step
 			if no_lines - linecounter < 1:
 				break
@@ -181,7 +179,7 @@ def more(f):
 			end = "")
 			
 			stdout.flush()
-			keypress = ord(msvcrt.getch())
+			keypress = ord(getch())
 			if keypress is 3:
 				print()
 				break
@@ -197,6 +195,9 @@ def more(f):
 
 def _shutdown_restart_abort(_wait, actionname):
 	from time import sleep
+	from threading import Thread, Event
+	from msvcrt import kbhit, getch
+	
 	def countdown(action, evnt_object):
 		for i in range(_wait - 2, -1, -1):
 			if not evnt_object.is_set():
@@ -206,8 +207,8 @@ def _shutdown_restart_abort(_wait, actionname):
 			else:
 				break
 	
-	event = threading.Event()
-	abort_thread = threading.Thread(target = countdown,
+	event = Event()
+	abort_thread = Thread(target = countdown,
 			name = "sysutil %s abort thread" % actionname.lower(),
 			args = (actionname, event),
 			daemon = True)
@@ -216,7 +217,7 @@ def _shutdown_restart_abort(_wait, actionname):
 	
 	try:
 		while abort_thread.is_alive():
-			if msvcrt.kbhit() and ord(msvcrt.getch()) is 27:
+			if kbhit() and ord(getch()) is 27:
 				raise KeyboardInterrupt
 	except KeyboardInterrupt:
 		event.set()
@@ -225,7 +226,7 @@ def _shutdown_restart_abort(_wait, actionname):
 	
 	return 0
 
-@shared_content.Windowsonly
+@shared_operations.Windowsonly
 def shutdown(_wait = -1):
 	"""
 	Shuts down the local computer after a given time in seconds.
@@ -242,14 +243,14 @@ def shutdown(_wait = -1):
 	synonymns:  shutdown, stopcomputer
 	"""
 	if not _shutdown_restart_abort(_wait > -1 and _wait+1 or 16, "Shutting down"):
-		subprocess.call("shutdown /p")
+		sub_call("shutdown /p")
 		return
 	
 	print("Shutdown aborted.")
 	
 stopcomputer = shutdown
 
-@shared_content.Windowsonly
+@shared_operations.Windowsonly
 def restartcomputer(_wait = -1):
 	"""
 	Restarts the local computer after a given time in seconds.
@@ -267,14 +268,14 @@ def restartcomputer(_wait = -1):
 	synonymns: restartcomputer, restart
 	"""
 	if not _shutdown_restart_abort(_wait > -1 and _wait + 1 or 16, "Restarting"):
-		subprocess.call("shutdown /r /t 00")
+		sub_call("shutdown /r /t 00")
 		return
 	
 	print("Restart aborted.")
 
 restart = restartcomputer
 
-@shared_content.Windowsonly
+@shared_operations.Windowsonly
 def getdrives():
 	"""
 	Prints the info of drives connnected to the computer.
@@ -285,14 +286,16 @@ def getdrives():
 	"""
 	
 	results = [
-	io.StringIO(subprocess.check_output("wmic logicaldisk get %s" % s).decode())\
+	StringIO(sub_check_output("wmic logicaldisk get %s" % s).decode())\
 	for s in ("name", "volumename", "freespace")]
+	
+	from itertools import repeat
 	
 	format_template = "\t{0}\t\t\t   {1}\t\t  {2}"
 	
 	print(format_template.format(*(next(f).strip() for f in results)))
 	
-	print("  {0}\t\t{1}\t\t{2}".format(*itertools.repeat("-"*15, 3)))
+	print("  {0}\t\t{1}\t\t{2}".format(*repeat("-"*15, 3)))
 	
 	space_str = lambda s: str(round(float(s) / 10**9, 1)) + " GB"
 	strip_strs = lambda three: (s.strip() for s in three)
@@ -301,14 +304,14 @@ def getdrives():
 		if name:
 			print(format_template.format(
 			name,
-			vol_name or (name in shared_content.cddrives() and "(CD-ROM)" or "Unavailable"),
+			vol_name or (name in shared_operations.cddrives() and "(CD-ROM)" or "Unavailable"),
 			space and space_str(space) or "Unavailable"))
 	
 
 psdrive = getdrives
 
-@shared_content.Windowsonly
-@shared_content.assert_argument_type(str)
+@shared_operations.Windowsonly
+@shared_operations.assert_argument_type(str)
 def eject(drive = ""):
 	"""
 	Eject the cd tray of a drive specified.
@@ -319,14 +322,14 @@ def eject(drive = ""):
 	"""
 	
 	if not drive:
-		if len(shared_content.cddrives()) is 1:
-			drive = shared_content.cddrives()
+		if len(shared_operations.cddrives()) is 1:
+			drive = shared_operations.cddrives()
 		else:
 			print("This computer does not connected to a cd tray.")
 			return
-	elif not drive.replace("/", "\\").strip("\\") in shared_content.cddrives():
+	elif not drive.replace("/", "\\").strip("\\") in shared_operations.cddrives():
 		print("{} is not a drive with a cd tray.".format(drive))
 		return
 	
-	subprocess.call([shared_content.eject, drive])
+	sub_call([shared_operations.eject, drive])
 

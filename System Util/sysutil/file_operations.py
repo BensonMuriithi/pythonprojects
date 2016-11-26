@@ -4,28 +4,11 @@ Functions that mainly target files but occasionally also directories or even pro
 
 import os
 import shutil
-import subprocess
-from itertools import filterfalse
 
 try:
-	from .dir_operations import _resolvehint
-	from . import shared_content
+	from . import shared_operations
 except SystemError:
-	from dir_operations import _resolvehint
-	import shared_content
-
-class PathIsFileError(OSError):
-	"""
-	This exception is raised when an attempt to copy or move a target to
-	a file is made. This is to prevent overwriting and interfering with existing
-	files.
-	"""
-
-class FileLocationError(OSError):
-	""""
-	This is raised when a specified location of a file is invalid.
-	"""
-
+	import shared_operations
 
 def _getfiles(location, destination = ""):
 	"""
@@ -38,21 +21,14 @@ def _getfiles(location, destination = ""):
 	"""
 	
 	if destination and os.path.isfile(destination):
-		raise PathIsFileError("Copy or move must be to a directory not file.")
+		raise OSError("Copy or move must be to a directory not file.")
 	
-	location = os.path.abspath(location)
-	drname, base = os.path.split(location)
+	if not os.path.isdir(os.path.dirname(location) or os.curdir):
+		raise OSError("\nThe directory specified or implied for the file does not exist.")
 	
-	if "*" in base:
-		for i in _resolvehint(drname, base):
-			yield os.path.join(drname, i)
-	else:
-		if not os.path.exists(location):
-			raise FileLocationError("The file {} does not exist".format(location))
-		yield location
+	return shared_operations.resolve_path(location)
 
-
-@shared_content.assert_argument_type(str)
+@shared_operations.assert_argument_type(str)
 def copy(source, destination):
 	"""
 	Copies specified item(s) to another location.
@@ -76,7 +52,7 @@ def copy(source, destination):
 
 cp = copy
 
-@shared_content.assert_argument_type(str)
+@shared_operations.assert_argument_type(str)
 def move(source, destination):
 	"""
 	Moves item(s) from one location to another.
@@ -101,8 +77,8 @@ def move(source, destination):
 	
 mv = move
 
-@shared_content.Windowsonly
-@shared_content.assert_argument_type(str)
+@shared_operations.Windowsonly
+@shared_operations.assert_argument_type(str)
 def delete(filename, force = ""):
 	"""
 	Deletes a items from their location.
@@ -126,7 +102,8 @@ def delete(filename, force = ""):
 	"""
 	
 	if force != "f":
-		subprocess.Popen([shared_content.recycle, filename])
+		from subprocess import Popen
+		Popen([shared_operations.recycle, filename])
 	else:
 		for f in _getfiles(filename):
 			try:
@@ -139,7 +116,7 @@ def delete(filename, force = ""):
 	
 rm = remove = delete
 
-@shared_content.assert_argument_type(str)
+@shared_operations.assert_argument_type(str)
 def rename(old, new):
 	"""
 	Renames a file.
@@ -151,7 +128,7 @@ def rename(old, new):
 
 rni = rename
 
-@shared_content.assert_argument_type(str)
+@shared_operations.assert_argument_type(str)
 def new_item(name):
 	"""
 	Create a new file with specified name.
@@ -170,7 +147,7 @@ def new_item(name):
 
 newitem = new_item #escape simple typing mistake or name confusion
 
-@shared_content.assert_argument_type(str)
+@shared_operations.assert_argument_type(str)
 def wipe(f = ""):
 	"""
 	Wipes the contents of the file or directory specified.
@@ -193,8 +170,7 @@ def wipe(f = ""):
 				from console_operations import cls
 			cls()
 
-@shared_content.assert_argument_type(str)
-def find(name):
+def find(name, report_finds = True):
 	"""
 	Searches for a name within a directory.
 	Any files in a directory and all its subdirectories that match the 
@@ -211,18 +187,25 @@ def find(name):
 	
 	synonymns: find, search
 	"""
-	x = None
-	if ":" or "\\" or "/" in name:#one has specified a path to search in
-		x, name = os.path.split(os.path.abspath(name))
+	directory_path, name = os.path.split(os.path.abspath(name))
+	
+	if not os.path.isdir(directory_path):
+		raise OSError("\n%s is not a directory" % directory_path)
 	
 	name = name.lower()
+	from time import localtime, strftime
 	
-	if "*" not in name or (name.startswith("*") and name.endswith("*")):
-		func = lambda x: name.strip("*") in x.lower()
+	if "*" not in name:
+		func = lambda s: name in s.lower()
+	elif name.startswith("*") and name.endswith("*"):
+		name = name[1:-1]
+		func = lambda s: name in s.lower()
 	elif name.startswith("*"):
-		func = lambda x: x.lower().endswith(name[1:])
+		name = name[1:]
+		func = lambda x: x.lower().endswith(name)
 	elif name.endswith("*"):
-		func = lambda x: x.lower().startswith(name[:-1])
+		name = name[:-1]
+		func = lambda x: x.lower().startswith(name)
 	else:
 		raise ValueError(
 			"File names cannot contain special characters like '*'.{}".format(
@@ -232,37 +215,30 @@ def find(name):
 	hit_count = 0
 	print()
 	
-	for root, dirs, files in os.walk(x or os.path.dirname(os.path.abspath(name))):
-		d = filter(func, filterfalse(shared_content.is_system_file, dirs))
-		f = filter(func, filterfalse(shared_content.is_system_file, files))
-		try:
-			print(os.path.join(root, next(d)))
-			hit_count += 1
-		except StopIteration:
-			try:
-				print(os.path.join(root, next(f)))
-				hit_count += 1
-			except StopIteration:
-				continue
-			else:
-				for i in f:
-					print(os.path.join(root, i))
-					hit_count += 1
-		else:
-			for i in d:
-				print(os.path.join(root, i))
-				hit_count += 1
-			for i in f:
-				print(os.path.join(root, i))
-				hit_count += 1
+	for root, dirs, files in os.walk(directory_path):
+		results = [f for f in dirs + files if func(f)]
 		
+		if results:
+			print("\n%s\n" % root)
+			
+			for f, st in filter(None,
+					(shared_operations.stat_accessible(os.path.join(root, s))\
+					for s in results)):
+				
+				print("\t{mod}\t{dtag:^5}\t{file_size:>12}\t{name}".format(
+					mod = strftime("%c", localtime(st.st_mtime)),
+					dtag = os.path.isdir(f) and "DIR" or "FILE",
+					file_size = os.path.isfile(f) and st.st_size or "",
+					name = os.path.basename(f)))
+			
+			
+			hit_count += len(results)
+		
+	if report_finds:
+		print("\n{count} match{s}\n".format(count = hit_count,
+					s = "" if hit_count is 1 else "es"))
+	else:
 		print()
-		
-	
-	print("Your search got {count} hit{s}\n".format(count = hit_count,
-					s = "" if hit_count is 1 else "s"))
 
 search = find
-
-
 

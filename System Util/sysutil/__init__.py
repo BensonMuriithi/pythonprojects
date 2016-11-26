@@ -41,10 +41,6 @@ copy(source, destination)
 	
 	synonymns: copy, cp
 
-	
-	
-	synonymns: move, mv
-
 delete(filename, force = "")
 	Deletes a items from their location.
 	
@@ -85,13 +81,11 @@ find(name)
 	arguments:
 	name: Name(string) to search for in the directory.(Required)
 	
-	
 	synonymns: find, search
 
 getdrives()
 	Prints the info of drives connnected to the computer.
 	The function currently only works on windows and utilises the wmic command
-	
 	
 	synonymns: getdrives, psdrive
 
@@ -107,7 +101,6 @@ ls(pth = "")
 	
 	pth: The path to operate on. (Optional)
 	
-	
 	synonymns: ls, dir
 
 lsr(pth = "")
@@ -121,7 +114,6 @@ lsr(pth = "")
 	
 	arguments:
 	 pth: The parent path to work on.  (Optional)
-	
 	
 	synonymns: lsr, dir_r
 
@@ -144,6 +136,8 @@ move(source, destination)
 	arguments:
 	source: Current location of item(s) to move. (Required)
 	destination: Target location to move ietm(s)  (Required)
+	
+	synonymns: move, mv
 
 new_item(name)
 	Create a new file with specified name.
@@ -153,7 +147,6 @@ new_item(name)
 	name: Name of the file to create. If the file is desired to be at a path
 	 other than the cwd, the name should be the path of the file to create.
 	   (Required)
-	  
 	
 	synonymns: new_item, newitem
 

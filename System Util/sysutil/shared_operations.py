@@ -1,22 +1,33 @@
 """
 Functions and data shared by multiple modules of sysutil
 """
-from functools import wraps
+
 import os
+import glob
+
+from io import StringIO
 from sys import platform
-import chardet
-import subprocess
-import io
-from itertools import takewhile
+from functools import wraps
+from subprocess import check_output
 
-#paths to executables recycle and eject
-eject = os.path.join(os.path.dirname(os.path.abspath(__file__)), "executables\\eject.exe")
-recycle = os.path.join(os.path.dirname(os.path.abspath(__file__)), "executables\\recycle.exe")
-
-_system_names_start = ("bootmgr", "bootnxt", "system", "skypee", "config")
-_system_names_end = (".bin", ".ini", ".sys", ".git", ".msi", "documents and settings")
+eject = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+			"executables\\eject.exe")
+recycle = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+			"executables\\recycle.exe")
 _cddrives = None
-#some names reserved for system files.
+
+def resolve_path(s):
+	drive, sub_path = os.path.splitdrive(s)
+	
+	return glob.iglob(drive + "".join((
+		c.isalpha() and "[%s%s]" % (c.upper(), c.lower()) or\
+		c for c in sub_path)))
+
+def stat_accessible(p):
+	try:
+		return p, os.stat(p)
+	except PermissionError:
+		return
 
 def Windowsonly(f):
 	"""Decorate functions that require Windows"""
@@ -117,13 +128,8 @@ def cddrives():
 	"""
 	global _cddrives
 	if _cddrives is None:
-		_cddrives = {i for i in io.StringIO(\
-			subprocess.check_output("wmic cdrom get drive").decode().strip())\
-			if ":" in i}
+		_cddrives = {i for i in StringIO(\
+			check_output("wmic cdrom get drive").decode().strip()) if ":" in i}
 	
 	return _cddrives
-
-def is_system_file(x):
-	return x.lower().endswith(_system_names_end) or \
-		x.lower().startswith(_system_names_start)
 

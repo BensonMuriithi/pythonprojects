@@ -7,7 +7,7 @@ import shutil
 
 try:
 	from . import shared_operations
-except SystemError:
+except (SystemError, ValueError):
 	import shared_operations
 
 def _getfiles(location, destination = ""):
@@ -77,7 +77,7 @@ def move(source, destination):
 	
 mv = move
 
-@shared_operations.Windowsonly
+@shared_operations.platform_check("nt")
 @shared_operations.assert_argument_type(str)
 def delete(filename, force = ""):
 	"""
@@ -170,6 +170,7 @@ def wipe(f = ""):
 				from console_operations import cls
 			cls()
 
+@shared_operations.catch_interrupt
 def find(name, report_finds = True):
 	"""
 	Searches for a name within a directory.
@@ -213,7 +214,7 @@ def find(name, report_finds = True):
 		)
 	
 	hit_count = 0
-	print()
+	print
 	
 	for root, dirs, files in os.walk(directory_path):
 		results = [f for f in dirs + files if func(f)]
@@ -238,7 +239,7 @@ def find(name, report_finds = True):
 		print("\n{count} match{s}\n".format(count = hit_count,
 					s = "" if hit_count is 1 else "es"))
 	else:
-		print()
+		print
 
 search = find
 

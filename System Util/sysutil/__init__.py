@@ -184,16 +184,6 @@ shutdown()
 	
 	synonymns:  shutdown, stopcomputer
 
-start(f)
-	Starts a specified file using the default set for that type of file
-	If the name specified isn't an existing path but a program whose
-	main process holds the name, that program is launched or launched in a new
-	window if already running.
-	
-	arguments:
-	
-	f: Path of file or name of process to start. (Required)
-
 stop(process)
 	Forcefully kill a process and all its child processes.
 	
@@ -224,7 +214,10 @@ wipe(f = "")
 
 """
 
-from . import console_operations, dir_operations, file_operations
+try:
+	from . import console_operations, dir_operations, file_operations
+except ValueError:
+	import console_operations, dir_operations, file_operations
 
 import types
 

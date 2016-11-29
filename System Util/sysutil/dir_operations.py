@@ -4,12 +4,12 @@ Functions that are mainly targeted at working directories.
 
 import os
 
-from time import localtime, strftime
-
 try:
 	from . import shared_operations
-except SystemError:
+except (SystemError, ValueError):
 	import shared_operations
+
+from time import localtime, strftime
 
 
 def cwd():
@@ -52,6 +52,7 @@ def cd(pth = ""):
 chdir = cd
 
 @shared_operations.assert_argument_type(str)
+@shared_operations.catch_interrupt
 def ls(pth = ""):
 	"""
 	Prints the contents of the specified directory
@@ -80,7 +81,7 @@ def ls(pth = ""):
 		directory = (os.path.join(pth, s) for s in os.listdir(
 						pth and _evaluatepath(pth) or os.curdir))
 	
-	print("\nDirectory:",os.path.abspath(pth or os.curdir) + "\n")
+	print "\nDirectory:",os.path.abspath(pth or os.curdir) + "\n"
 	
 	for f, st in filter(None, 
 			(shared_operations.stat_accessible(s) for s in directory)):
@@ -92,12 +93,14 @@ def ls(pth = ""):
 		name = os.path.basename(f)
 		))
 	
-	print()
+	print
 	
 	return
+
 dir = ls
 
 @shared_operations.assert_argument_type(str)
+@shared_operations.catch_interrupt
 def lsr(pth = ""):
 	"""
 	Map the contents of a directory. If no path is provided, the current working
@@ -140,7 +143,7 @@ def lsr(pth = ""):
 					file_size = os.path.isfile(f) and st.st_size or "",
 					name = os.path.basename(f)))
 			
-	print()
+	print
 
 
 dir_r = lsr

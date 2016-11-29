@@ -6,7 +6,6 @@ import os
 import glob
 
 from io import StringIO
-from sys import platform
 from functools import wraps
 from subprocess import check_output
 
@@ -15,6 +14,19 @@ eject = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 recycle = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 			"executables\\recycle.exe")
 _cddrives = None
+
+def catch_interrupt(f):
+	""""
+	Catches KeyboardInterrupt for functions that could take too long
+	"""
+	@wraps(f)
+	def deco(*args, **kwargs):
+		try:
+			f(*args, **kwargs)
+		except KeyboardInterrupt:
+			print "^C"
+	
+	return deco
 
 def resolve_path(s):
 	drive, sub_path = os.path.splitdrive(s)
@@ -26,53 +38,36 @@ def resolve_path(s):
 def stat_accessible(p):
 	try:
 		return p, os.stat(p)
-	except PermissionError:
+	except (OSError, IOError):
 		return
 
-def Windowsonly(f):
+def platform_check(*args):
 	"""Decorate functions that require Windows"""
-	@wraps(f)
-	def os_check_deco(*args, **kwargs):
-		if platform.startswith("win"):
-			return f(*args, **kwargs)
-		else:
-			print("This operation currently does not work on", platform)
-			print("Check the source code in {}.py for more information.".format(
-				os.path.abspath(f.__module__)))
-			
-			return None
 	
-	return os_check_deco
+	platforms = args or ("nt", "posix")
+	
+	def actualdeco(f):
+		@wraps(f)
+		def os_check_deco(*args, **kwargs):
+			if os.name in platforms:
+				return f(*args, **kwargs)
+			else:
+				print "This operation currently does not work on %s systems" % os.name
+				print "Check the source code in {}.py for more information.".format(
+					os.path.abspath(f.__module__))
+				
+				return None
+		
+		return os_check_deco
+	
+	return actualdeco
 
 
 def assert_argument_type(expect = str, **specific):
-	"""
-	Function decorator that checks that the arguments provided to a function
-	are of a certain type or of any type among several
-	When several types are provided to crosscheck arguments against, these
-	types must be in a tuple.
-	
-	If specific types are desired for specific keyword arguments, the
-	name of the argument and its desired type should be provided as a key value
-	pair ie arg_name = arg_type.
-	When types are specified for specific arguments, these arguments must be 
-	provided as keyword arguments when calling the function for them to be evaluated.
-	
-	A range of types can also be specified for a keyword argument where
-	the range of types is a tuple of types.
-	
-	It is not advisable to use this function and it's returned decorator with
-	recursing functions. If absolutely necessary to do so, it would be better to
-	use an inner function to recurse with and this function decorating the
-	outer function that will be passed arguments by users.
-	In some cases it isn't much harm however.
-	
-	Type ranges must only be in tuples and not any other type of collection.
-	"""
 	
 	def _raise(e = ""):
-		raise TypeError("Argument for type to expect must be a type, or \
-tuple of types.\nProvided", e)
+		raise TypeError(
+		"Argument for type to expect must be a type, or tuple of types.\nProvided", e)
 	
 	def check_type_type(_type):
 		if isinstance(_type, type):
@@ -128,8 +123,8 @@ def cddrives():
 	"""
 	global _cddrives
 	if _cddrives is None:
-		_cddrives = {i for i in StringIO(\
-			check_output("wmic cdrom get drive").decode().strip()) if ":" in i}
+		_cddrives = {i for i in check_output("wmic cdrom get drive").strip().split()\
+				if ':' in i}
 	
 	return _cddrives
 

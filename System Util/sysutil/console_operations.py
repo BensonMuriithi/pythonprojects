@@ -3,15 +3,15 @@ Functions that target the shell.
 """
 
 import os
+import subprocess
+try:
+	from . import shared_operations
+except (SystemError, ValueError):
+	import shared_operations
 
 from io import StringIO
 from contextlib import contextmanager
-from subprocess import call as sub_call, check_output as sub_check_output
 
-try:
-	from . import shared_operations
-except SystemError:
-	import shared_operations
 
 def cls():
 	"""
@@ -20,30 +20,15 @@ def cls():
 	"""
 	from sys import platform, version
 	
-	os.system("cls")	
-	print()
+	subprocess.Popen(os.name == "posix" and "clear" or "cls", shell = 1)	
+	print
 	
 	print("Python %s on %s" % (version, platform))
 	print("Type \"help\", \"copyright\", \"credits\" or \"license\" for more information.")
 
 
-@shared_operations.assert_argument_type(str)
-def start(f):
-	"""
-	Starts a specified file using the default set for that type of file
-	If the name specified isn't an existing path but a program whose
-	main process holds the name, that program is launched or launched in a new
-	window if already running.
-	
-	arguments:
-	
-	f: Path of file or name of process to start. (Required)
-	"""
-	
-	os.startfile(f)
-
-@shared_operations.Windowsonly
-@shared_operations.assert_argument_type(str)
+@shared_operations.platform_check("nt")
+@shared_operations.assert_argument_type(str)#accept process ids soon
 def stop(process):
 	""" 
 	Forcefully kill a process and all its child processes.
@@ -56,12 +41,12 @@ def stop(process):
 	synonymns: stop, kill, stopprocess, taskkill
 	"""
 	
-	sub_call("taskkill /f /t /im %s.exe" % process.replace(".exe", ""))
+	subprocess.call("taskkill /f /t /im %s.exe" % process.replace(".exe", ""))
 	
 
 kill = stopprocess = taskkill = stop
 
-@shared_operations.Windowsonly
+@shared_operations.platform_check("nt")
 @shared_operations.assert_argument_type(str)
 def tasklist(process = ""):
 	"""
@@ -78,9 +63,9 @@ def tasklist(process = ""):
 	"""
 	
 	if process:
-		sub_call("tasklist /fi \"imagename eq {}.exe\"".format(
+		subprocess.call("tasklist /fi \"imagename eq {}.exe\"".format(
 				process.replace(".exe", "")))
-		print()
+		print
 		return
 	
 	def iterate_processes():
@@ -90,7 +75,7 @@ def tasklist(process = ""):
 		"""
 		added_names = set()
 		
-		for l in StringIO(sub_check_output("tasklist").decode()):
+		for l in StringIO(subprocess.check_output("tasklist")):
 			exe_location = l.find(".exe")
 			if exe_location != -1:
 				if not l[:exe_location + 1] in added_names:
@@ -117,7 +102,7 @@ def _getfileobject(f):
 		if not os.path.isfile(f):
 			raise OSError("%s is not a readable file" % f)
 		f = open(f)
-	elif hasattr(f, "readable"):
+	elif hasattr(f, "read"):
 		if f.closed:
 			f = open(f.name)
 		if not f.readable():
@@ -144,6 +129,7 @@ def cat(f):
 
 stream = cat
 
+@shared_operations.platform_check("nt")
 def more(f):
 	"""
 	Print the contents of a file 10 lines at a time.
@@ -174,14 +160,13 @@ def more(f):
 			if no_lines - linecounter < 1:
 				break
 			
-			print("-- More -- ({:2}%)".format(
+			print "-- More -- ({:2}%)".format(
 			int(round((float(linecounter) / no_lines) * 100))),
-			end = "")
 			
 			stdout.flush()
 			keypress = ord(getch())
 			if keypress is 3:
-				print()
+				print
 				break
 			step = keypress in (32, 13) and terminal_height\
 								or terminal_height >> 2 or step
@@ -201,8 +186,8 @@ def _shutdown_restart_abort(_wait, actionname):
 	def countdown(action, evnt_object):
 		for i in range(_wait - 2, -1, -1):
 			if not evnt_object.is_set():
-				print("\r{} in {:^3} seconds. Press ESC or CTRL-C to abort".format(
-							action, i), end = "")
+				print "\r{} in {:^3} seconds. Press ESC or CTRL-C to abort".format(
+							action, i),
 				sleep(1)
 			else:
 				break
@@ -221,12 +206,12 @@ def _shutdown_restart_abort(_wait, actionname):
 				raise KeyboardInterrupt
 	except KeyboardInterrupt:
 		event.set()
-		print()
+		print
 		return 1
 	
 	return 0
 
-@shared_operations.Windowsonly
+@shared_operations.platform_check("nt")
 def shutdown(_wait = -1):
 	"""
 	Shuts down the local computer after a given time in seconds.
@@ -243,14 +228,14 @@ def shutdown(_wait = -1):
 	synonymns:  shutdown, stopcomputer
 	"""
 	if not _shutdown_restart_abort(_wait > -1 and _wait+1 or 16, "Shutting down"):
-		sub_call("shutdown /p")
+		subprocess.call("shutdown /p")
 		return
 	
 	print("Shutdown aborted.")
 	
 stopcomputer = shutdown
 
-@shared_operations.Windowsonly
+@shared_operations.platform_check("nt")
 def restartcomputer(_wait = -1):
 	"""
 	Restarts the local computer after a given time in seconds.
@@ -268,14 +253,14 @@ def restartcomputer(_wait = -1):
 	synonymns: restartcomputer, restart
 	"""
 	if not _shutdown_restart_abort(_wait > -1 and _wait + 1 or 16, "Restarting"):
-		sub_call("shutdown /r /t 00")
+		subprocess.call("shutdown /r /t 00")
 		return
 	
 	print("Restart aborted.")
 
 restart = restartcomputer
 
-@shared_operations.Windowsonly
+@shared_operations.platform_check("nt")
 def getdrives():
 	"""
 	Prints the info of drives connnected to the computer.
@@ -285,9 +270,8 @@ def getdrives():
 	synonymns: getdrives, psdrive
 	"""
 	
-	results = [
-	StringIO(sub_check_output("wmic logicaldisk get %s" % s).decode())\
-	for s in ("name", "volumename", "freespace")]
+	results = [StringIO(subprocess.check_output("wmic logicaldisk get %s" % s))\
+				for s in ("name", "volumename", "freespace")]
 	
 	from itertools import repeat
 	
@@ -310,7 +294,7 @@ def getdrives():
 
 psdrive = getdrives
 
-@shared_operations.Windowsonly
+@shared_operations.platform_check("nt", "posix")
 @shared_operations.assert_argument_type(str)
 def eject(drive = ""):
 	"""
@@ -321,6 +305,10 @@ def eject(drive = ""):
 	The function currently relies on an executable and only works on Windows.
 	"""
 	
+	if os.name == "posix":
+		subprocess.call("eject")
+		return
+		
 	if not drive:
 		if len(shared_operations.cddrives()) is 1:
 			drive = shared_operations.cddrives()
@@ -331,5 +319,5 @@ def eject(drive = ""):
 		print("{} is not a drive with a cd tray.".format(drive))
 		return
 	
-	sub_call([shared_operations.eject, drive])
+	subprocess.call([shared_operations.eject, drive])
 
